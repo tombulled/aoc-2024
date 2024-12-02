@@ -1,4 +1,4 @@
-""" Day 1: Historian Hysteria """
+"""Day 1: Historian Hysteria"""
 
 from typing import Collection, Counter, Generator, Iterable, Sequence, Tuple
 
@@ -18,7 +18,6 @@ def read_input() -> Generator[Tuple[int, int], None, None]:
 
 def main() -> None:
     """Solution for AoC 2024, Day 1, Parts 1 & 2"""
-    # --- Part One ---
 
     # Load the entire dataset into memory
     inputs: Collection[Tuple[int, int]] = tuple(read_input())
@@ -27,6 +26,8 @@ def main() -> None:
     locations_lhs: Sequence[int]
     locations_rhs: Sequence[int]
     locations_lhs, locations_rhs = map(sorted, zip(*inputs))
+
+    # --- Part One ---
 
     # Total distance between all locations
     total_distance: int = sum(
@@ -37,8 +38,10 @@ def main() -> None:
 
     # --- Part Two ---
 
+    # Count the number of occurences of each value in the rhs column
     location_counts: Counter[int] = Counter(locations_rhs)
 
+    # Compute the total "similarity score" of values in the lhs column
     similarity_score: int = sum(
         value * location_counts[value] for value in locations_lhs
     )
