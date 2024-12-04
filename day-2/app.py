@@ -1,6 +1,6 @@
 """Day 2: Red-Nosed Reports"""
 
-from typing import Generator, Iterable, Optional, Sequence, TypeAlias
+from typing import Collection, Generator, Iterable, Optional, Sequence, TypeAlias
 
 Report: TypeAlias = Sequence[int]
 
@@ -32,14 +32,16 @@ def get_sign(x: int, /) -> int:
 
 
 def is_pair_safe(x: int, y: int, /, *, expected_sign: Optional[int] = None) -> bool:
-    # 1. Safe if the levels are either all increasing or all decreasing
+    """Determine whether a pair of levels from a report are considered safe"""
+
+    # Safe if the levels are either all increasing or all decreasing
     current_sign: int = get_sign(y - x)
     if expected_sign is not None and (
         expected_sign == 0 or expected_sign != current_sign
     ):
         return False
 
-    # 2. Safe if any two adjacent levels differ by at least one and at most three.
+    # Safe if any two adjacent levels differ by at least one and at most three.
     difference: int = abs(x - y)
     if difference == 0 or difference > 3:
         return False
@@ -111,14 +113,14 @@ def is_report_safe_2(
         )
 
         # If the report is safe with either the lhs, or rhs removed, then the
-        # report can be considered safe (through the power of dampening)
+        # report can be considered safe (through the power of dampening!)
         if safe_with_lhs_removed or safe_with_rhs_removed:
             return True
 
-        # Otherwise, the report is most likely unsafe, however if the second pair
+        # Otherwise, the report is most likely unsafe. *However*, if the second pair
         # is "bad", then this could be because the first level in the report is bad.
         # If the first level in the report is bad, then the sign will likely be wrong,
-        # so we should test the safety of the report with the first level removed.
+        # so we should test the safety of the report with the first level removed too.
         return index == 1 and is_report_safe_2(
             report[1:], dampen=False, expected_sign=None
         )
@@ -127,13 +129,22 @@ def is_report_safe_2(
     return True
 
 
-# --- Part One ---
-total_safe_reports: int = sum(map(is_report_safe, read_input()))
-print("Total Safe Reports:", total_safe_reports)
+def main() -> None:
+    """Solution for AoC 2024, Day 2, Parts 1 & 2"""
 
-# --- Part Two ---
-total_safe_reports_with_dampening: int = sum(map(is_report_safe_2, read_input()))
-print("Total Safe Reports (With Dampening):", total_safe_reports_with_dampening)
+    # Load the entire dataset into memory
+    inputs: Collection[Report] = tuple(read_input())
 
-assert total_safe_reports == 282
-assert total_safe_reports_with_dampening == 349
+    # --- Part One ---
+    total_safe_reports: int = sum(map(is_report_safe, inputs))
+    print("Total Safe Reports:", total_safe_reports)
+    assert total_safe_reports == 282
+
+    # --- Part Two ---
+    total_safe_reports_with_dampening: int = sum(map(is_report_safe_2, inputs))
+    print("Total Safe Reports (With Dampening):", total_safe_reports_with_dampening)
+    assert total_safe_reports_with_dampening == 349
+
+
+if __name__ == "__main__":
+    main()
