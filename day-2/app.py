@@ -1,8 +1,6 @@
 """Day 2: Red-Nosed Reports"""
 
-from typing import Final, Generator, Iterable, Optional, Sequence, TypeAlias
-
-# MAX_BAD_LEVELS: Final[int] = 1
+from typing import Generator, Iterable, Optional, Sequence, TypeAlias
 
 Report: TypeAlias = Sequence[int]
 
@@ -50,7 +48,6 @@ def is_pair_safe(x: int, y: int, /, *, expected_sign: Optional[int] = None) -> b
     return True
 
 
-# ans is 282
 def is_report_safe(report: Report, /) -> bool:
     """Determine whether a report is considered safe"""
 
@@ -255,48 +252,25 @@ def is_report_safe(report: Report, /) -> bool:
 #     return True
 
 
-# ans: 349
 def is_report_safe_2(
     report: Report, /, *, dampen: bool = True, expected_sign: Optional[int] = None
 ) -> bool:
     """Determine whether a report is considered safe (with dampening)"""
-    
-    # print(report)
-
-    # If the report contains too few levels to be considered unsafe, it is safe.
-    # if len(report) < 2:
-    #     return True
 
     index: int
     lhs: int
     for index, lhs in enumerate(report[:-1]):
         rhs: int = report[index + 1]
 
-        # print(index, (lhs, rhs)) # TEMP
-        # input()
-
         if expected_sign is None:
             expected_sign = get_sign(rhs - lhs)
-            # print("sign not set, detected", expected_sign)
 
         # If the pair is safe, great! Let's move on to the next one...
         if is_pair_safe(lhs, rhs, expected_sign=expected_sign):
-            # print("pair is safe, on to next.")
             continue
 
-        # print("pair not safe")
         if not dampen:
-            # print("dampening disabled, report is unsafe.")
             return False
-        # print("dampening enabled, will try removal.")
-
-        # try and remove previous lhs
-        # safe_with_plhs_removed: bool = True
-        # if index != 0:
-        #     report_with_plhs_removed: Report = report[1:] if index == 1
-        #     sign_with_plhs_removed: Optional[int] = None if index < 2 else expected_sign
-        #     print("report is", report_with_plhs_removed, "with plhs removed, and sign", sign_with_plhs_removed)
-        #     safe_with_plhs_removed = is_report_safe_2(report_with_plhs_removed, dampen=False, expected_sign=sign_with_plhs_removed)
 
         safe_with_plhs_removed: bool = True
         if index == 1:
@@ -306,13 +280,11 @@ def is_report_safe_2(
         # try and remove lhs
         report_with_lhs_removed: Report = report[1:] if index == 0 else (report[index-1], *report[index+1:])
         sign_with_lhs_removed: Optional[int] = None if index < 2 else expected_sign
-        # print("report is", report_with_lhs_removed, "with lhs removed, and sign", sign_with_lhs_removed)
         safe_with_lhs_removed: bool = is_report_safe_2(report_with_lhs_removed, dampen=False, expected_sign=sign_with_lhs_removed)
 
         # try and remove rhs
         report_with_rhs_removed: Report = (lhs, *report[index+2:])
         sign_with_rhs_removed: Optional[int] = None if index == 0 else expected_sign
-        # print("report is", report_with_rhs_removed, "with rhs removed, and sign", sign_with_rhs_removed)
         safe_with_rhs_removed: bool = is_report_safe_2(report_with_rhs_removed, dampen=False, expected_sign=sign_with_rhs_removed)
 
         if index == 1:
@@ -321,7 +293,6 @@ def is_report_safe_2(
             return safe_with_lhs_removed or safe_with_rhs_removed
 
     # The report has not been deemed unsafe, and is therefore safe.
-    # print("report deemed safe")
     return True
 
 
@@ -333,29 +304,5 @@ print("Total Safe Reports:", total_safe_reports)
 total_safe_reports_with_dampening: int = sum(map(is_report_safe_2, read_input()))
 print("Total Safe Reports (With Dampening):", total_safe_reports_with_dampening)
 
-# i = """7 6 4 2 1
-# 1 2 7 8 9
-# 9 7 6 2 1
-# 1 3 2 4 5
-# 8 6 4 4 1
-# 1 3 6 7 9""".splitlines()
-# d = [list(map(int, x.split())) for x in i]
-
-# # r = next(read_input())
-# # print(r)
-# # print(is_safe_with_dampening(r))
-
-# v = [is_report_safe_2(r) for r in d]
-# print(v)
-
-
-# assert is_report_safe_2([100, 1, 2, 3])
-# assert is_report_safe_2([1, 100, 2, 3])
-# assert is_report_safe_2([1, 2, 100, 3])
-# assert is_report_safe_2([1, 2, 3, 100])
-
-# assert is_report_safe_2((57, 54, 55, 57, 59, 61))
-# assert is_report_safe_2((85, 86, 85, 82, 79))
-# assert is_report_safe_2((88, 86, 88, 90, 91, 94))
-# assert is_report_safe_2((75, 78, 75, 73, 70))
-# assert is_report_safe_2((91, 94, 93, 92, 90))
+assert total_safe_reports == 282
+assert total_safe_reports_with_dampening == 349
