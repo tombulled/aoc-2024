@@ -1,12 +1,14 @@
 """Day 3: Mull It Over"""
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Final, Generator, Iterable, Optional, Sequence
 
 
 class Operator(str, Enum):
+    """Known instruction operators"""
+
     def __str__(self) -> str:
         return self.value
 
@@ -17,35 +19,27 @@ class Operator(str, Enum):
 
 @dataclass
 class Instruction:
+    """Container for the component parts of an instruction (operator & operands)"""
+
     operator: Operator
-    operands: Sequence[str]
+    operands: Sequence[str] = field(default_factory=tuple)
 
 
 def _build_instruction_pattern(operator: Operator, *operands: str) -> str:
-    return rf"{operator}\({','.join(operands)}\)"
+    """Build a composite instruction pattern from operator & operand patterns"""
 
+    return rf"{operator}\({OPERAND_SEP.join(operands)}\)"
 
-PATTERN_OPERATOR: Final[str] = rf"(?P<operator>{'|'.join(Operator)})"
 
 OPERATOR: Final[str] = r"[a-z']+"
 OPERAND: Final[str] = r"\d{1,3}"
-# OPERANDS: Final[str] = rf"(?:{OPERAND},)*{OPERAND}?"
-
-# NO_OPERANDS: Final[str] = ""
-# OPERANDS_DO: Final[str] = NO_OPERANDS
-# OPERANDS_DONT: Final[str] = NO_OPERANDS
-# OPERANDS_MUL: Final[str] = r"(?P<lhs>\d{1,3}),(?P<rhs>\d{1,3})"
-
-PATTERN_INSTRUCTION: Final[str] = r"(?P<operator>[a-z']+)\((?P<operands>.*)\)"
-# PATTERN_MUL: Final[str] = r"mul\((?P<lhs>\d{1,3}),(?P<rhs>\d{1,3})\)"
-# PATTERN_DO: Final[str] = r"do\(\)"
-# PATTERN_DONT: Final[str] = r"don't\(\)"
-# PATTERN_INSTRUCTION: Final[str] = f"{PATTERN_MUL}|{PATTERN_DO}|{PATTERN_DONT}"
+OPERAND_SEP: Final[str] = ","
 
 PATTERN_MUL: Final[str] = _build_instruction_pattern(Operator.MUL, OPERAND, OPERAND)
 PATTERN_DO: Final[str] = _build_instruction_pattern(Operator.DO)
 PATTERN_DONT: Final[str] = _build_instruction_pattern(Operator.DONT)
 
+PATTERN_INSTRUCTION: Final[str] = rf"(?P<operator>{OPERATOR}+)\((?P<operands>.*)\)"
 PATTERN_INSTRUCTIONS: Final[str] = "|".join((PATTERN_MUL, PATTERN_DO, PATTERN_DONT))
 
 
@@ -57,49 +51,68 @@ def read_input() -> str:
         return file.read()
 
 
-def find_instructions() -> Generator[Instruction, None, None]:
-    instructions: Sequence[str] = re.findall(PATTERN_INSTRUCTIONS, dataset)
+def find_instructions(string: str, /) -> Generator[Instruction, None, None]:
+    """Find (and yield) all instructions in a given string"""
 
-    instruction: str
-    for instruction in instructions:
-        instruction_match: Optional[re.Match] = re.match(
-            PATTERN_INSTRUCTION, instruction
+    raw_instructions: Sequence[str] = re.findall(PATTERN_INSTRUCTIONS, string)
+
+    raw_instruction: str
+    for raw_instruction in raw_instructions:
+        raw_instruction_match: Optional[re.Match] = re.match(
+            PATTERN_INSTRUCTION, raw_instruction
         )
 
-        assert instruction_match is not None
+        assert raw_instruction_match is not None
 
         raw_operator: str
         raw_operands: str
-        raw_operator, raw_operands = instruction_match.groups()
+        raw_operator, raw_operands = raw_instruction_match.groups()
 
         operator: Operator = Operator(raw_operator)
-        operands: Sequence[str] = raw_operands.split(",")
+        operands: Sequence[str] = raw_operands.split(OPERAND_SEP)
 
         yield Instruction(operator, operands)
 
 
-"""Solution for AoC 2024, Day 3, Parts 1 & 2"""
+def main() -> None:
+    """Solution for AoC 2024, Day 3, Parts 1 & 2"""
 
-# Load the entire dataset into memory
-dataset: str = read_input()
+    # Load the entire dataset into memory
+    dataset: str = read_input()
 
-# --- Part One ---
-sum_of_multiplications: int = sum(
-    int(lhs) * int(rhs)
-    for lhs, rhs in re.findall(r"mul\((?P<lhs>\d{1,3}),(?P<rhs>\d{1,3})\)", dataset)
-)
-print("Sum of Multiplications:", sum_of_multiplications)
-assert sum_of_multiplications == 175700056
+    # --- Part One ---
+    sum_of_multiplications: int = sum(
+        int(lhs) * int(rhs)
+        for lhs, rhs in re.findall(r"mul\((?P<lhs>\d{1,3}),(?P<rhs>\d{1,3})\)", dataset)
+    )
+    print("Sum of Multiplications:", sum_of_multiplications)
+    assert sum_of_multiplications == 175700056
 
-# --- Part Two ---
+    # --- Part Two ---
 
-do: bool = True
+    do: bool = True
+    sum_of_multiplications_conditional: int = 0
 
-instruction: Instruction
-for instruction in find_instructions():
-    if instruction.operator is Operator.DO:
-        do = True
-    elif instruction.operator is Operator.DONT:
-        do = False
-    elif instruction.operator is Operator.MUL:
-        print("mul", instruction.operands)
+    instruction: Instruction
+    for instruction in find_instructions(dataset):
+        match instruction.operator:
+            case Operator.DO:
+                do = True
+            case Operator.DONT:
+                do = False
+            case Operator.MUL:
+                if not do:
+                    continue
+
+                lhs: int
+                rhs: int
+                lhs, rhs = map(int, instruction.operands)
+
+                sum_of_multiplications_conditional += lhs * rhs
+
+    print("Sum of Multiplications (Conditional):", sum_of_multiplications_conditional)
+    assert sum_of_multiplications_conditional == 71668682
+
+
+if __name__ == "__main__":
+    main()
