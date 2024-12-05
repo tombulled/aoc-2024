@@ -54,19 +54,19 @@ def read_input() -> str:
 def find_instructions(string: str, /) -> Generator[Instruction, None, None]:
     """Find (and yield) all instructions in a given string"""
 
-    raw_instructions: Sequence[str] = re.findall(PATTERN_INSTRUCTIONS, string)
+    instructions: Sequence[str] = re.findall(PATTERN_INSTRUCTIONS, string)
 
-    raw_instruction: str
-    for raw_instruction in raw_instructions:
-        raw_instruction_match: Optional[re.Match] = re.match(
-            PATTERN_INSTRUCTION, raw_instruction
+    instruction: str
+    for instruction in instructions:
+        instruction_match: Optional[re.Match] = re.match(
+            PATTERN_INSTRUCTION, instruction
         )
 
-        assert raw_instruction_match is not None
+        assert instruction_match is not None
 
         raw_operator: str
         raw_operands: str
-        raw_operator, raw_operands = raw_instruction_match.groups()
+        raw_operator, raw_operands = instruction_match.groups()
 
         operator: Operator = Operator(raw_operator)
         operands: Sequence[str] = raw_operands.split(OPERAND_SEP)
