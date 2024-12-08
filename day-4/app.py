@@ -1,9 +1,7 @@
 """Day 4: Ceres Search"""
 
 import re
-from typing import Final, Iterable, MutableSequence, Sequence, Tuple
-
-SIZE: Final[int] = 140
+from typing import Iterable, MutableSequence, Sequence, Tuple
 
 
 def read_input() -> str:
@@ -80,9 +78,12 @@ dataset: str = read_input()
 
 lines_horizontal: Sequence[str] = dataset.splitlines()
 lines_vertical: Sequence[str] = tuple("".join(line) for line in zip(*lines_horizontal))
+
+size: int = len(lines_horizontal[0])
+
 lines_diagonal_left: Sequence[str] = to_diagonal(lines_horizontal, anchor=(0, 0))
 lines_diagonal_right: Sequence[str] = to_diagonal(
-    lines_horizontal, anchor=(0, SIZE - 1)
+    lines_horizontal, anchor=(0, size - 1)
 )
 
 seq_of_lines: Sequence[Sequence[str]] = (
