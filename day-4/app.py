@@ -33,7 +33,6 @@ def to_diagonal(
     true_x: int
     true_y: int
 
-    depth
     for depth in range(size):
         string_diagonal = ""
 
@@ -47,7 +46,6 @@ def to_diagonal(
 
         strings_diagonal.append(string_diagonal)
 
-    depth
     for depth in range(size - 1):
         true_depth = size - depth - 2
 
@@ -108,4 +106,81 @@ assert total_xmas_occurences == 2468
 
 # --- Part Two ---
 
-# ...
+
+def find_all_a_coords(letters: Sequence[Sequence[str]], /) -> Sequence[Tuple[int, int]]:
+    if not letters:
+        return ()
+
+    size_x: int = len(letters[0])
+    size_y: int = len(letters)
+
+    coords: MutableSequence[Tuple[int, int]] = []
+
+    x: int
+    for x in range(size_x):
+        y: int
+        for y in range(size_y):
+            letter: str = letters[x][y]
+
+            if letter == "A":
+                coords.append((x, y))
+
+    return coords
+
+
+def get_cross_words_for_coord(
+    letters: Sequence[Sequence[str]], coord: Tuple[int, int], /
+) -> Sequence[str]:
+    size: int = len(letters[0])
+    bounds: Tuple[int, int] = (0, size - 1)
+
+    x: int
+    y: int
+    x, y = coord
+
+    if x in bounds or y in bounds:
+        # Don't bother doing anything, as there can be at most two
+        # letters per diag as we're at a corner.
+        return ()
+
+    tl_to_br: str = "".join(
+        (
+            letters[x - 1][y - 1],
+            letters[x][y],
+            letters[x + 1][y + 1],
+        )
+    )
+    tr_to_bl: str = "".join(
+        (
+            letters[x + 1][y - 1],
+            letters[x][y],
+            letters[x - 1][y + 1],
+        )
+    )
+
+    return (tl_to_br, tr_to_bl)
+
+
+coords: Sequence[Tuple[int, int]] = find_all_a_coords(lines_horizontal)
+
+total_count_of_x_mas: int = 0
+
+coord: Tuple[int, int]
+for coord in coords:
+    cross_words: Sequence[str] = get_cross_words_for_coord(lines_horizontal, coord)
+
+    if not cross_words:
+        continue
+
+    cross_words_inv: Sequence[str] = tuple(
+        cross_word[::-1] for cross_word in cross_words
+    )
+
+    all_cross_words: Sequence[str] = (*cross_words, *cross_words_inv)
+    count_of_x_mas: int = sum(map(lambda line: line == "MAS", all_cross_words))
+
+    if count_of_x_mas == 2:
+        total_count_of_x_mas += 1
+
+print("Part 2:", total_count_of_x_mas)
+assert total_count_of_x_mas == 1864
