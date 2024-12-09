@@ -1,7 +1,32 @@
 """Day 4: Ceres Search"""
 
 import re
-from typing import Iterable, MutableSequence, Sequence, Tuple
+from typing import Any, Iterable, MutableSequence, Sequence, Tuple, TypeAlias, TypeVar
+
+T = TypeVar("T")
+
+Coord: TypeAlias = Tuple[int, int]
+Grid: TypeAlias = Sequence[Sequence[T]]
+
+
+def get_grid_size(grid: Grid[Any], /) -> Tuple[int, int]:
+    if not grid:
+        return (0, 0)
+
+    size_x: int = len(grid[0])
+    size_y: int = len(grid)
+
+    return (size_x, size_y)
+
+
+def get_square_grid_size(grid: Grid[Any], /) -> int:
+    size_x: int
+    size_y: int
+    size_x, size_y = get_grid_size(grid)
+
+    assert size_x == size_y, f"Grid is not a square ({size_x}x{size_y})"
+
+    return size_x
 
 
 def read_input() -> str:
@@ -63,12 +88,8 @@ def to_diagonal(
     return strings_diagonal
 
 
-def count_xmas_in_string(string: str, /) -> int:
-    return len(re.findall("XMAS", string))
-
-
 def count_xmas_in_strings(strings: Sequence[str], /) -> int:
-    return sum(map(count_xmas_in_string, strings))
+    return sum(len(re.findall("XMAS", string)) for string in strings)
 
 
 # Load the entire dataset into memory
