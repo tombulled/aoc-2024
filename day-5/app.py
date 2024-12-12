@@ -15,15 +15,22 @@ from typing import (
 # Typing
 Update: TypeAlias = Sequence[int]
 
+
+class Rule(NamedTuple):
+    x: int
+    y: int
+
+
 # Constants
 RULE_SEP: Final[str] = "|"
 UPDATE_SEP: Final[str] = ","
 SECTION_SEP: Final[str] = "\n\n"
 
 
-class Rule(NamedTuple):
-    x: int
-    y: int
+# Exceptions
+@dataclass
+class RuleValidationError(Exception):
+    rule: Rule
 
 
 @dataclass
@@ -78,7 +85,12 @@ class RuleMachine:
     def learn(self, rule: Rule, /) -> None:
         self.rules.setdefault(rule.x, set()).add(rule.y)
 
-    def validate(self, update: Update, /) -> bool:
+    def learn_all(self, rules: Iterable[Rule], /) -> None:
+        rule: Rule
+        for rule in rules:
+            self.learn(rule)
+
+    def validate(self, update: Update, /) -> None:
         page_index: int
         page_number: int
         for page_index, page_number in enumerate(update):
@@ -100,14 +112,35 @@ class RuleMachine:
                 # If this "later" page appears before the current page,
                 # the rule has been broken and the update isn't valid.
                 if later_page_index < page_index:
-                    return False
+                    raise RuleValidationError(Rule(page_number, later_page))
 
-        # The update has not been deemed invalid, and is therefore valid.
+    def is_valid(self, update: Update, /) -> bool:
+        try:
+            self.validate(update)
+        except RuleValidationError:
+            return False
+
         return True
 
+    def get_valid_updates(self, updates: Iterable[Update], /) -> Iterable[Update]:
+        return (update for update in updates if self.is_valid(update))
 
-EXAMPLE_INPUT: Final[str] = (
-    """
+    def get_invalid_updates(self, updates: Iterable[Update], /) -> Iterable[Update]:
+        return (update for update in updates if not self.is_valid(update))
+
+    def fix(self, update: Update, /) -> Update:
+        # index: int
+        # for index in range(len(update)):
+        #     # This page is valid, we don't need to fix it.
+        #     if self._validate_page(update, index):
+        #         continue
+
+        return update  # TEMP
+
+
+EXAMPLE_INPUT: Final[
+    str
+] = """
 47|53
 97|13
 97|61
@@ -137,7 +170,6 @@ EXAMPLE_INPUT: Final[str] = (
 61,13,29
 97,13,75,29,47
 """.strip()
-)
 EXAMPLE_OUTPUT: Sequence[Sequence[int]] = (
     (75, 47, 61, 53, 29),
     (97, 61, 53, 29, 13),
@@ -146,26 +178,29 @@ EXAMPLE_OUTPUT: Sequence[Sequence[int]] = (
 EXAMPLE_SCORE: int = 143
 
 raw_dataset: str = read_input()
+# dataset: Dataset = parse_dataset(EXAMPLE_INPUT)
 dataset: Dataset = parse_dataset(raw_dataset)
+
+# --- Part One ---
+
 rule_machine: RuleMachine = RuleMachine()
+# total: int = 0
 
-total: int = 0
+# Learn all the rules
+rule_machine.learn_all(dataset.rules)
 
-rule: Rule
-for rule in dataset.rules:
-    rule_machine.learn(rule)
-
-update: Update
-for update in dataset.updates:
-    is_valid: bool = rule_machine.validate(update)
-
-    # This report isn't valid, eww.
-    if not is_valid:
-        continue
-
-    middle_page: int = get_middle_page_number(update)
-
-    total += middle_page
+total: int = sum(
+    map(get_middle_page_number, rule_machine.get_valid_updates(dataset.updates))
+)
 
 print("Part 1:", total)
 assert total == 4689
+
+# --- Part Two ---
+
+# invalid_updates: Iterable[Update] = rule_machine.get_invalid_updates(dataset.updates)
+# fixed_updates: Iterable[Update] = map(rule_machine.fix, invalid_updates)
+# total_2: int = sum(map(get_middle_page_number, fixed_updates))
+
+# print("Part 2:", total_2)
+# assert total_2 == ???
