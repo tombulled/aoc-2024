@@ -6,6 +6,7 @@ from typing import (
     Final,
     Iterable,
     MutableMapping,
+    MutableSequence,
     NamedTuple,
     Sequence,
     Set,
@@ -14,6 +15,7 @@ from typing import (
 
 # Typing
 Update: TypeAlias = Sequence[int]
+MutableUpdate: TypeAlias = MutableSequence[int]
 
 
 class Rule(NamedTuple):
@@ -138,13 +140,24 @@ class RuleMachine:
         except RuleValidationError as error:
             rule = error.rule
 
-        print(update, rule)
+        new_update: MutableUpdate = [*update]
 
-        return update  # TEMP
+        x_index: int = update.index(rule.x)
+        y_index: int = update.index(rule.y)
+
+        # Remove the problematic `x` page
+        new_update.pop(x_index)
+
+        # Re-insert the problematic `x` page at a location that conforms
+        # to the specific failing rule.
+        new_update.insert(y_index, rule.x)
+
+        return self.fix(new_update)
 
 
-EXAMPLE_INPUT: Final[str] = (
-    """
+EXAMPLE_INPUT: Final[
+    str
+] = """
 47|53
 97|13
 97|61
@@ -174,7 +187,6 @@ EXAMPLE_INPUT: Final[str] = (
 61,13,29
 97,13,75,29,47
 """.strip()
-)
 EXAMPLE_OUTPUT: Sequence[Sequence[int]] = (
     (75, 47, 61, 53, 29),
     (97, 61, 53, 29, 13),
@@ -183,8 +195,8 @@ EXAMPLE_OUTPUT: Sequence[Sequence[int]] = (
 EXAMPLE_SCORE: int = 143
 
 raw_dataset: str = read_input()
-dataset: Dataset = parse_dataset(EXAMPLE_INPUT)
-# dataset: Dataset = parse_dataset(raw_dataset)
+# dataset: Dataset = parse_dataset(EXAMPLE_INPUT)
+dataset: Dataset = parse_dataset(raw_dataset)
 
 # --- Part One ---
 
@@ -207,4 +219,4 @@ fixed_updates: Iterable[Update] = map(rule_machine.fix, invalid_updates)
 total_2: int = sum(map(get_middle_page_number, fixed_updates))
 
 print("Part 2:", total_2)
-# assert total_2 == ???
+assert total_2 == 6336
