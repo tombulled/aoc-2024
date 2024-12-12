@@ -73,7 +73,7 @@ def parse_dataset(dataset: str, /) -> Dataset:
 def get_middle_page_number(update: Update, /) -> int:
     length: int = len(update)
 
-    assert length % 2 == 1, "Update contains an even number of pages."
+    assert length % 2 == 1, "Update contains an even number of pages (no middle)."
 
     return update[length // 2]
 
@@ -129,18 +129,22 @@ class RuleMachine:
         return (update for update in updates if not self.is_valid(update))
 
     def fix(self, update: Update, /) -> Update:
-        # index: int
-        # for index in range(len(update)):
-        #     # This page is valid, we don't need to fix it.
-        #     if self._validate_page(update, index):
-        #         continue
+        rule: Rule
+
+        try:
+            self.validate(update)
+
+            return update
+        except RuleValidationError as error:
+            rule = error.rule
+
+        print(update, rule)
 
         return update  # TEMP
 
 
-EXAMPLE_INPUT: Final[
-    str
-] = """
+EXAMPLE_INPUT: Final[str] = (
+    """
 47|53
 97|13
 97|61
@@ -170,6 +174,7 @@ EXAMPLE_INPUT: Final[
 61,13,29
 97,13,75,29,47
 """.strip()
+)
 EXAMPLE_OUTPUT: Sequence[Sequence[int]] = (
     (75, 47, 61, 53, 29),
     (97, 61, 53, 29, 13),
@@ -178,13 +183,12 @@ EXAMPLE_OUTPUT: Sequence[Sequence[int]] = (
 EXAMPLE_SCORE: int = 143
 
 raw_dataset: str = read_input()
-# dataset: Dataset = parse_dataset(EXAMPLE_INPUT)
-dataset: Dataset = parse_dataset(raw_dataset)
+dataset: Dataset = parse_dataset(EXAMPLE_INPUT)
+# dataset: Dataset = parse_dataset(raw_dataset)
 
 # --- Part One ---
 
 rule_machine: RuleMachine = RuleMachine()
-# total: int = 0
 
 # Learn all the rules
 rule_machine.learn_all(dataset.rules)
@@ -194,13 +198,13 @@ total: int = sum(
 )
 
 print("Part 1:", total)
-assert total == 4689
+# assert total == 4689
 
 # --- Part Two ---
 
-# invalid_updates: Iterable[Update] = rule_machine.get_invalid_updates(dataset.updates)
-# fixed_updates: Iterable[Update] = map(rule_machine.fix, invalid_updates)
-# total_2: int = sum(map(get_middle_page_number, fixed_updates))
+invalid_updates: Iterable[Update] = rule_machine.get_invalid_updates(dataset.updates)
+fixed_updates: Iterable[Update] = map(rule_machine.fix, invalid_updates)
+total_2: int = sum(map(get_middle_page_number, fixed_updates))
 
-# print("Part 2:", total_2)
+print("Part 2:", total_2)
 # assert total_2 == ???
