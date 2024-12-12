@@ -199,37 +199,46 @@ class RuleMachine:
         return self.fix(new_update)
 
 
-# Load the input (dataset) into memory and parse it.
-raw_dataset: str = read_input()
-dataset: Dataset = parse_dataset(raw_dataset)
+def main() -> None:
+    """Solution for AoC 2024, Day 5, Parts 1 & 2"""
 
-# Create a rule machine!
-rule_machine: RuleMachine = RuleMachine()
+    # Load the input (dataset) into memory and parse it.
+    raw_dataset: str = read_input()
+    dataset: Dataset = parse_dataset(raw_dataset)
 
-# Learn all the rules...
-rule_machine.learn_all(dataset.rules)
+    # Create a rule machine!
+    rule_machine: RuleMachine = RuleMachine()
 
-# --- Part One ---
+    # Learn all the rules...
+    rule_machine.learn_all(dataset.rules)
 
-# Find only the valid updates
-valid_updates: Iterable[Update] = rule_machine.get_valid_updates(dataset.updates)
+    # --- Part One ---
 
-# Sum the middle page numbers of all valid updates
-part_1: int = sum(map(get_middle_page_number, valid_updates))
+    # Find only the valid updates
+    valid_updates: Iterable[Update] = rule_machine.get_valid_updates(dataset.updates)
 
-print("Part 1:", part_1)
-assert part_1 == 4689
+    # Sum the middle page numbers of all valid updates
+    part_1: int = sum(map(get_middle_page_number, valid_updates))
 
-# --- Part Two ---
+    print("Part 1:", part_1)
+    assert part_1 == 4689
 
-# Find only the invalid updates
-invalid_updates: Iterable[Update] = rule_machine.get_invalid_updates(dataset.updates)
+    # --- Part Two ---
 
-# Fix the invalid updates
-fixed_updates: Iterable[Update] = map(rule_machine.fix, invalid_updates)
+    # Find only the invalid updates
+    invalid_updates: Iterable[Update] = rule_machine.get_invalid_updates(
+        dataset.updates
+    )
 
-# Sum the middle page numbers of all fixed (formerly invalid) updates
-total_2: int = sum(map(get_middle_page_number, fixed_updates))
+    # Fix the invalid updates
+    fixed_updates: Iterable[Update] = map(rule_machine.fix, invalid_updates)
 
-print("Part 2:", total_2)
-assert total_2 == 6336
+    # Sum the middle page numbers of all fixed (formerly invalid) updates
+    total_2: int = sum(map(get_middle_page_number, fixed_updates))
+
+    print("Part 2:", total_2)
+    assert total_2 == 6336
+
+
+if __name__ == "__main__":
+    main()
