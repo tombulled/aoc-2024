@@ -32,6 +32,9 @@ class NoValueEnum(Enum):
     def __repr__(self) -> str:
         return f"<{type(self).__name__}.{self.name}>"
 
+
+# NOTE: Should these be compass directions?
+# e.g. you can turn left, but you can't turn "up"
 class Direction(NoValueEnum):
     UP = auto()
     DOWN = auto()
@@ -79,7 +82,6 @@ class StaticSprite(Sprite):
         return cls(costume)
 
 
-@dataclass
 class Guard(Sprite):
     COSTUMES: ClassVar[Mapping[Direction, str]] = {
         Direction.UP: "^",
@@ -88,10 +90,13 @@ class Guard(Sprite):
         Direction.RIGHT: ">",
     }
 
-    direction: Direction = Direction.UP
+    _direction: Direction
 
-    def render(self) -> str:
-        return Guard.COSTUMES[self.direction]
+    def __init__(self: Self, /, direction: Direction = Direction.UP) -> None:
+        self._direction = direction
+
+    def render(self: Self, /) -> str:
+        return Guard.COSTUMES[self._direction]
 
     @classmethod
     def has_costume(cls: Type[Self], costume: str, /) -> bool:
@@ -103,8 +108,47 @@ class Guard(Sprite):
 
         return cls(direction)
 
-    def turn(self, direction: Direction, /) -> None:
-        self.direction = direction
+    def point(self, direction: Direction, /) -> None:
+        self._direction = direction
+
+    def turn_left(self: Self, /) -> None:
+        new_direction: Direction
+
+        match self._direction:
+            case Direction.UP:
+                new_direction = Direction.LEFT
+            case Direction.DOWN:
+                new_direction = Direction.RIGHT
+            case Direction.LEFT:
+                new_direction = Direction.DOWN
+            case Direction.RIGHT:
+                new_direction = Direction.UP
+
+        self.point(new_direction)
+
+    def turn_right(self: Self, /) -> None:
+        new_direction: Direction
+
+        match self._direction:
+            case Direction.UP:
+                new_direction = Direction.RIGHT
+            case Direction.DOWN:
+                new_direction = Direction.LEFT
+            case Direction.LEFT:
+                new_direction = Direction.UP
+            case Direction.RIGHT:
+                new_direction = Direction.DOWN
+
+        self.point(new_direction)
+
+    # def turn(self, direction: Direction, /) -> None:
+    #     if direction in (Direction.UP, Direction.DOWN):
+    #         self.point(direction)
+    #         return
+
+    #     if self.direction is Direction.UP:
+    #         if direction is Direction.LEFT:
+    #             self.point(Direction.LEFT)
 
     @classmethod
     def _get_direction(cls: Type[Self], costume: str, /) -> Direction:
@@ -113,6 +157,10 @@ class Guard(Sprite):
         }
 
         return costume_to_direction[costume]
+
+    @property
+    def direction(self: Self, /) -> Direction:
+        return self._direction
 
 
 T = TypeVar("T")
@@ -143,7 +191,7 @@ class Map:
                 map_string += sprite.render()
 
         return map_string
-    
+
     def get(self, x: int, y: int, /) -> Sprite:
         return self.grid[y][x]
 
@@ -199,7 +247,7 @@ EXAMPLE: Final[str] = (
 
 # EMPTY_MAP: Final[Map] = ()
 # EMPTY_GRID: Final[Grid[Sprite]] = ()
-# EMPTY_MAP: Final[Map] = 
+# EMPTY_MAP: Final[Map] =
 
 # def build_sprite(sprite_type: SpriteType, sprite_costume: )
 
@@ -220,7 +268,7 @@ def parse_grid(raw_grid: str, /) -> Grid[Sprite]:
     raw_rows: Sequence[str] = raw_grid.splitlines()
 
     if not raw_rows:
-        raise NotImplementedError # TODO
+        raise NotImplementedError  # TODO
         # return EMPTY_MAP
 
     # size_y: int = len(raw_rows)
@@ -261,3 +309,5 @@ map_: Map = Map(grid)
 # )
 
 print(map_.render())
+
+g: Guard = Guard()
