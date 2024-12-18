@@ -6,7 +6,6 @@ from enum import Enum, auto
 from functools import cached_property
 from typing import (
     ClassVar,
-    Collection,
     Final,
     Generic,
     Iterable,
@@ -42,13 +41,6 @@ class Direction(NoValueEnum):
     DOWN = auto()
     LEFT = auto()
     RIGHT = auto()
-
-
-# class SpriteType(NoValueEnum):
-#     EMPTY = auto()
-#     OBSTACLE = auto()
-#     GUARD = auto()
-#     TRAIL = auto()
 
 
 ### Constants ###
@@ -176,7 +168,7 @@ class Grid(Generic[T]):
     def __init__(self: Self, grid: Sequence[Sequence[T]], /) -> None:
         self._grid = [[value for value in row] for row in grid]
 
-        # todo: enforce grid is a rectangle
+        # TODO: Enforce grid is a rectangle?
 
     def __repr__(self: Self, /) -> str:
         return f"{type(self).__name__}({self.size_x}x{self.size_y})"
@@ -233,52 +225,33 @@ class Grid(Generic[T]):
         return tuple(row[x] for row in self._grid)
 
 
-# @dataclass
-# class Map:
-#     grid: MutableGrid[Sprite]
+@dataclass
+class Map:
+    grid: Grid[Sprite]
 
-#     def __init__(self, grid: Grid[Sprite]) -> None:
-#         self.grid = [[sprite for sprite in row] for row in grid]
+    def render(self) -> str:
+        map_string: str = ""
 
-#     def render(self) -> str:
-#         map_string: str = ""
+        index: int
+        row: Sequence[Sprite]
+        for index, row in enumerate(self.grid.rows):
+            if index > 0:
+                map_string += "\n"
 
-#         index: int
-#         row: Sequence[Sprite]
-#         for index, row in enumerate(self.grid):
-#             if index > 0:
-#                 map_string += "\n"
+            sprite: Sprite
+            for sprite in row:
+                map_string += sprite.render()
 
-#             sprite: Sprite
-#             for sprite in row:
-#                 map_string += sprite.render()
-
-#         return map_string
-
-#     def get(self, x: int, y: int, /) -> Sprite:
-#         return self.grid[y][x]
+        return map_string
+    
+    def print(self) -> None:
+        print(self.render())
 
 
 # Sprites
-EMPTY: Empty = Empty()
-OBSTACLE: Obstacle = Obstacle()
-GUARD: Guard = Guard()
-TRAIL: Trail = Trail()
-
-# STATIC_SPRITES: Mapping[str, Sprite] = {
-#     EMPTY.costume: EMPTY,
-#     OBSTACLE.costume: OBSTACLE,
-#     TRAIL.costume: TRAIL,
-# }
-
-STATIC_SPRITES: Collection[Sprite] = (EMPTY, OBSTACLE, TRAIL)
-
-# SPRITES: Mapping[SpriteType, Sprite] = {
-#     SpriteType.EMPTY: EMPTY,
-#     SpriteType.OBSTACLE: OBSTACLE,
-#     SpriteType.GUARD: Guard(),
-#     SpriteType.TRAIL: TRAIL,
-# }
+EMPTY: Final[Empty] = Empty()
+OBSTACLE: Final[Obstacle] = Obstacle()
+TRAIL: Final[Trail] = Trail()
 
 EXAMPLE: Final[str] = (
     """
@@ -295,19 +268,10 @@ EXAMPLE: Final[str] = (
 """.strip()
 )
 
-# Map: TypeAlias = Sequence[Sequence[Sprite]]
-# MutableMap: TypeAlias = MutableSequence[MutableSequence[Sprite]]
-
-# EMPTY_MAP: Final[Map] = ()
-# EMPTY_GRID: Final[Grid[Sprite]] = ()
-# EMPTY_MAP: Final[Map] =
-
-# def build_sprite(sprite_type: SpriteType, sprite_costume: )
-
 
 def get_sprite(costume: str, /) -> Sprite:
     sprite: Sprite
-    for sprite in STATIC_SPRITES:
+    for sprite in (EMPTY, OBSTACLE, TRAIL):
         if sprite.has_costume(costume):
             return sprite
 
@@ -317,77 +281,22 @@ def get_sprite(costume: str, /) -> Sprite:
     raise SpriteError(f"No sprite has costume '{costume}'")
 
 
-# def parse_grid(raw_grid: str, /) -> Grid[Sprite]:
-#     raw_rows: Sequence[str] = raw_grid.splitlines()
+def parse_grid(raw_grid: str, /) -> Grid[Sprite]:
+    raw_rows: Sequence[str] = raw_grid.splitlines()
 
-#     if not raw_rows:
-#         raise NotImplementedError  # TODO
-#         # return EMPTY_MAP
+    grid: MutableSequence[MutableSequence[Sprite]] = []
 
-#     # size_y: int = len(raw_rows)
-#     # size_x: int = max(len(line) for line in lines)
-#     # size_x: int = len(raw_rows[0])
+    raw_row: str
+    for raw_row in raw_rows:
+        row: MutableSequence[Sprite] = [
+            get_sprite(raw_sprite) for raw_sprite in raw_row
+        ]
 
-#     grid: MutableGrid[Sprite] = []
+        grid.append(row)
 
-#     raw_row: str
-#     for raw_row in raw_rows:
-#         # row_len: int = len(raw_row)
-
-#         # The map is always a square, but let's be safe anyway!
-#         # if row_len != size_x:
-#         #     raise MapError(
-#         #         f"Map is not a rectangle. Row has length {row_len}, expected {size_x}"
-#         #     )
-
-#         row: MutableSequence[Sprite] = [
-#             get_sprite(raw_sprite) for raw_sprite in raw_row
-#         ]
-
-#         grid.append(row)
-
-#     return grid
+    return Grid(grid)
 
 
-def parse_grid(raw_grid: str, /) -> Grid[str]:
-    return Grid(raw_grid.splitlines())
-
-
-# print(EXAMPLE)
-# grid: Grid[Sprite] = parse_grid(EXAMPLE)
-# map_: Map = Map(grid)
-
-# map_: Map = read_map(EXAMPLE)
-# map_: Map = Map(
-#     (
-#         (EMPTY, OBSTACLE, EMPTY, Guard(), EMPTY),
-#         (EMPTY, OBSTACLE, OBSTACLE, EMPTY, OBSTACLE),
-#     )
-# )
-
-# print(map_.render())
-
-# g: Guard = Guard()
-
-# g: Grid[Sprite] = Grid.of_size(10, 10, EMPTY)
-# g: Grid[Sprite] = Grid(
-#     (
-#         (EMPTY, EMPTY, EMPTY),
-#         (EMPTY, OBSTACLE, EMPTY),
-#         (EMPTY, EMPTY, EMPTY),
-#     )
-# )
-# g: Grid[str] = Grid(
-#     (
-#         ("A", "B", "C"),
-#         ("D", "E", "F"),
-#         ("G", "H", "I"),
-#     )
-# )
-
-g: Grid[str] = parse_grid(EXAMPLE)
-
-# Temp sprites
-e: Empty = Empty()
-o: Obstacle = Obstacle()
-t: Trail = Trail()
+g: Grid[Sprite] = parse_grid(EXAMPLE)
+m: Map = Map(g)
+guard: Guard = g.get(4, 6)
