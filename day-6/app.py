@@ -2,7 +2,7 @@
 
 from abc import abstractmethod
 from dataclasses import dataclass
-from enum import Enum, auto
+from enum import Enum
 from functools import cached_property
 from typing import (
     ClassVar,
@@ -11,6 +11,7 @@ from typing import (
     Iterable,
     Mapping,
     MutableSequence,
+    NamedTuple,
     Protocol,
     Self,
     Sequence,
@@ -19,6 +20,14 @@ from typing import (
     TypeAlias,
     TypeVar,
 )
+
+### Typing ###
+T = TypeVar("T")
+Coord: TypeAlias = Tuple[int, int]
+
+class Coordinate(NamedTuple):
+    x: int
+    y: int
 
 
 ### Exceptions ###
@@ -36,11 +45,15 @@ class NoValueEnum(Enum):
         return f"<{type(self).__name__}.{self.name}>"
 
 
-class Direction(NoValueEnum):
-    UP = auto()
-    DOWN = auto()
-    LEFT = auto()
-    RIGHT = auto()
+# TODO: Can matrices be used for turning?
+# e.g. UP = (0, 1), DOWN = (0, -1), LEFT = (-1, 0), RIGHT = (1, 0)
+# then `Direction` can own the method/logic for turning, e.g:
+# assert Direction.UP.left() is Direction.LEFT
+class Direction(Enum):
+    UP: Coord = Coordinate(0, 1)
+    DOWN: Coord = Coordinate(0, -1)
+    LEFT: Coord = Coordinate(-1, 0)
+    RIGHT: Coord = Coordinate(1, 0)
 
 
 ### Constants ###
@@ -56,10 +69,6 @@ DIRECTION_TURN_RIGHT: Final[Mapping[Direction, Direction]] = {
     Direction.LEFT: Direction.UP,
     Direction.RIGHT: Direction.DOWN,
 }
-
-### Typing ###
-T = TypeVar("T")
-Coord: TypeAlias = Tuple[int, int]
 
 
 class Sprite(Protocol):
@@ -225,9 +234,35 @@ class Grid(Generic[T]):
         return tuple(row[x] for row in self._grid)
 
 
+def move_in_direction(
+    grid: Grid, coord: Coord, direction: Direction, amount: int = 1
+) -> Coord:
+    size_x: int
+    size_y: int
+    size_x, size_y = grid.size
+
+    x: int
+    y: int
+    x, y = coord
+
+    translation_x: int
+    translation_y: int
+    translation_x, translation_y = direction.value
+
+    x += translation_x * amount
+    y += translation_y * amount
+
+    if x < 0 or x >= size_x or y < 0 or y >= size_y:
+        raise Exception  # TODO
+
+    return (x, y)
+
+
 @dataclass
 class Map:
     grid: Grid[Sprite]
+
+    # _guard_position
 
     def render(self) -> str:
         map_string: str = ""
@@ -243,9 +278,35 @@ class Map:
                 map_string += sprite.render()
 
         return map_string
-    
+
     def print(self) -> None:
         print(self.render())
+
+    # @cached_property
+    @property
+    def guard(self: Self, /) -> Tuple[Coord, Guard]:
+        coord: Coord
+        sprite: Sprite
+        for coord, sprite in self.grid:  # FIXME
+            if isinstance(sprite, Guard):
+                return (coord, sprite)
+
+        raise Exception  # TODO
+
+    def move_guard(self: Self, /) -> Coord:
+        position: Coord
+        guard: Guard
+        position, guard = self.guard
+
+        direction: Direction = guard.direction
+
+        new_position: Coord = move_in_direction(
+            grid=self.grid, coord=position, direction=direction
+        )
+
+        sprite: Sprite = self.grid.get(new_position.x, new_position.y)
+
+        return (-1, -1)  # TEMP
 
 
 # Sprites
@@ -299,4 +360,7 @@ def parse_grid(raw_grid: str, /) -> Grid[Sprite]:
 
 g: Grid[Sprite] = parse_grid(EXAMPLE)
 m: Map = Map(g)
-guard: Guard = g.get(4, 6)
+
+# guard: Guard = g.get(4, 6)
+# guard: Guard = m.guard
+# assert guard is not None
