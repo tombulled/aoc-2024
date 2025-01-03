@@ -1,6 +1,7 @@
 """Day 7: Bridge Repair"""
 
 import itertools
+import math
 import operator
 from dataclasses import dataclass
 from enum import Enum
@@ -90,3 +91,9 @@ for equation in equations:
 
 print("Part 1:", total_calibration_result)
 assert total_calibration_result == 1985268524462
+
+
+def join(a: int, b: int, /) -> int:
+    shift: int = math.floor(math.log(abs(b), 10) + 1)
+
+    return a * 10**shift + b
