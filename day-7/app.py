@@ -1,24 +1,10 @@
 """Day 7: Bridge Repair"""
 
-from dataclasses import dataclass
 import itertools
 import operator
+from dataclasses import dataclass
 from enum import Enum
-from typing import Final, Iterable, Protocol, Sequence
-
-EXAMPLE_INPUT: Final[str] = (
-    """
-190: 10 19
-3267: 81 40 27
-83: 17 5
-156: 15 6
-7290: 6 8 6 15
-161011: 16 10 13
-192: 17 8 14
-21037: 9 7 18 13
-292: 11 6 16 20
-""".strip()
-)
+from typing import Iterable, Protocol, Sequence
 
 
 class OperatorFn(Protocol):
@@ -50,8 +36,6 @@ class Equation:
 
 
 def read_dataset() -> str:
-    """Read the input file"""
-
     with open("input", encoding="utf-8") as file:
         return file.read()
 
@@ -79,40 +63,30 @@ def validate_equation(equation: Equation, /) -> bool:
     operators: Sequence[Operator]
     for operators in operators_product:
         value: int = 0
-        # lhs: int
 
         index: int
         operator: Operator
         for index, operator in enumerate(operators):
-            # if index == 0:
-            #     lhs = equation.operands[0]
-
             lhs: int = equation.operands[0] if index == 0 else value
             rhs: int = equation.operands[index + 1]
 
-            # print("\t", lhs, operator.symbol, rhs, "=", operator.func(lhs, rhs))
-
             value = operator.func(lhs, rhs)
 
-            # value += result
-
-            # lhs = result
-
-        print(equation, operators, value, value == equation.test_value)
-
-        # if value == equation.test_value:
-        #     return True
-
-    print()
+        if value == equation.test_value:
+            return True
 
     return False
 
 
-# dataset: str = read_dataset()
-dataset: str = EXAMPLE_INPUT
+dataset: str = read_dataset()
 equations: Iterable[Equation] = parse_dataset(dataset)
+
+total_calibration_result: int = 0
 
 equation: Equation
 for equation in equations:
-    print(equation)
-    print(validate_equation(equation))
+    if validate_equation(equation):
+        total_calibration_result += equation.test_value
+
+print("Part 1:", total_calibration_result)
+assert total_calibration_result == 1985268524462
