@@ -1,8 +1,9 @@
 """Day 7: Bridge Repair"""
 
 from dataclasses import dataclass
-from enum import Enum, auto
-from typing import Final, Iterable, Sequence
+import operator
+from enum import Enum
+from typing import Final, Iterable, Protocol, Sequence
 
 EXAMPLE_INPUT: Final[str] = (
     """
@@ -18,10 +19,26 @@ EXAMPLE_INPUT: Final[str] = (
 """.strip()
 )
 
+class OperatorFn(Protocol):
+    def __call__(self, x: int, y: int, /) -> int:
+        ...
 
-class Operator(str, Enum):
-    ADD = "+"
-    MULTIPLY = "*"
+class Operator(Enum):
+    symbol: str
+    func: OperatorFn
+
+    ADD = ("+", operator.add)
+    MULTIPLY = ("*", operator.mul)
+
+    def __init__(self, symbol: str, func: OperatorFn, /) -> None:
+        self.symbol = symbol
+        self.func = func
+
+    def __str__(self) -> str:
+        return self.symbol
+    
+    def __repr__(self) -> str:
+        return f"<{type(self).__name__}.{self.name}>"
 
 
 @dataclass
