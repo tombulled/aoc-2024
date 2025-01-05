@@ -1,6 +1,17 @@
 """Day 8: Resonant Collinearity"""
 
-from typing import Final, Iterable, MutableSequence, Sequence, Tuple, TypeAlias, TypeVar
+from typing import (
+    Collection,
+    Final,
+    Iterable,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeVar,
+)
 
 # Typing
 T = TypeVar("T")
@@ -9,7 +20,8 @@ Grid: TypeAlias = Sequence[Sequence[T]]
 MutableGrid: TypeAlias = MutableSequence[MutableSequence[T]]
 
 # Constants
-EMPTY: Final[str] = "."
+VALUE_EMPTY: Final[str] = "."
+VALUE_ANTINODE: Final[str] = "#"
 
 # Temp
 EXAMPLE_INPUT: Final[str] = (
@@ -56,6 +68,21 @@ def grid_set(grid: MutableGrid[T], /, x: int, y: int, value: T) -> None:
     grid[y][x] = value
 
 
+# def grid_row(grid: Grid[T], y: int, /) -> Sequence[T]:
+#     return grid[y]
+
+
+# def grid_column(grid: Grid[T], x: int, /) -> Sequence[T]:
+#     return tuple(row[x] for row in grid)
+
+
+# def grid_columns(grid: Grid[T], /) -> Sequence[Sequence[T]]:
+#     size_x: int
+#     size_x, _ = grid_size(grid)
+
+#     return tuple(grid_column(grid, x) for x in range(size_x))
+
+
 def grid_iter(grid: Grid[T], /) -> Iterable[Tuple[Coord, T]]:
     size_x: int
     size_y: int
@@ -70,17 +97,45 @@ def grid_iter(grid: Grid[T], /) -> Iterable[Tuple[Coord, T]]:
             yield ((x, y), value)
 
 
-def find_frequencies(grid: Grid[str], /) -> Iterable[Tuple[Coord, str]]:
+def grid_print(grid: Grid[T], /) -> None:
+    row: Sequence[T]
+    for row in grid:
+        value: T
+        for value in row:
+            print(value, end="")
+
+        print()
+
+
+def find_antennas(grid: Grid[str], /) -> Iterable[Tuple[Coord, str]]:
     coord: Coord
     value: str
     for coord, value in grid_iter(grid):
-        if value == EMPTY:
+        if value == VALUE_EMPTY:
             continue
 
         yield (coord, value)
 
 
+def group_antennas(
+    antennas: Iterable[Tuple[Coord, str]], /
+) -> Mapping[str, Collection[Coord]]:
+    grouped_antennas: MutableMapping[str, MutableSequence[Coord]] = {}
+
+    coord: Coord
+    antenna: str
+    for coord, antenna in antennas:
+        grouped_antennas.setdefault(antenna, []).append(coord)
+
+    return grouped_antennas
+
+
 dataset: str = read_dataset()
 grid: Grid[str] = parse_dataset(dataset)
 
-f = tuple(find_frequencies(grid))
+antenna_coords = tuple(find_antennas(grid))
+
+# group antennas by frequency
+af = group_antennas(antenna_coords)
+
+# create all combinations of antennas (of the same frequency)
