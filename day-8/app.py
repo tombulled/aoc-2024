@@ -70,10 +70,17 @@ def grid_iter(grid: Grid[T], /) -> Iterable[Tuple[Coord, T]]:
             yield ((x, y), value)
 
 
+def find_frequencies(grid: Grid[str], /) -> Iterable[Tuple[Coord, str]]:
+    coord: Coord
+    value: str
+    for coord, value in grid_iter(grid):
+        if value == EMPTY:
+            continue
+
+        yield (coord, value)
+
+
 dataset: str = read_dataset()
 grid: Grid[str] = parse_dataset(dataset)
 
-coord: Coord
-value: str
-for coord, value in grid_iter(grid):
-    print(coord, value)
+f = tuple(find_frequencies(grid))
