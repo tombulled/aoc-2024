@@ -25,36 +25,22 @@ MutableGrid: TypeAlias = MutableSequence[MutableSequence[T]]
 VALUE_EMPTY: Final[str] = "."
 VALUE_ANTINODE: Final[str] = "#"
 
-# Temp
-EXAMPLE_INPUT: Final[str] = (
-    """
-............
-........0...
-.....0......
-.......0....
-....0.......
-......A.....
-............
-............
-........A...
-.........A..
-............
-............
-""".strip()
-)
-
 
 def read_dataset() -> str:
     with open("input", encoding="utf-8") as file:
         return file.read()
 
 
-def parse_dataset(dataset: str, /) -> Grid[str]:
-    return dataset.splitlines()
+def parse_dataset(dataset: str, /) -> MutableGrid[str]:
+    return [list(row) for row in dataset.splitlines()]
 
 
 def grid_get(grid: Grid[T], /, x: int, y: int) -> T:
     return grid[y][x]
+
+
+def grid_set(grid: MutableGrid[T], /, x: int, y: int, value: T) -> None:
+    grid[y][x] = value
 
 
 def grid_size(grid: Grid[T], /) -> Tuple[int, int]:
@@ -62,25 +48,6 @@ def grid_size(grid: Grid[T], /) -> Tuple[int, int]:
     size_x: int = len(grid[0]) if grid else 0
 
     return (size_x, size_y)
-
-
-def grid_set(grid: MutableGrid[T], /, x: int, y: int, value: T) -> None:
-    grid[y][x] = value
-
-
-# def grid_row(grid: Grid[T], y: int, /) -> Sequence[T]:
-#     return grid[y]
-
-
-# def grid_column(grid: Grid[T], x: int, /) -> Sequence[T]:
-#     return tuple(row[x] for row in grid)
-
-
-# def grid_columns(grid: Grid[T], /) -> Sequence[Sequence[T]]:
-#     size_x: int
-#     size_x, _ = grid_size(grid)
-
-#     return tuple(grid_column(grid, x) for x in range(size_x))
 
 
 def grid_iter(grid: Grid[T], /) -> Iterable[Tuple[Coord, T]]:
@@ -102,7 +69,7 @@ def grid_contains(grid: Grid[T], /, x: int, y: int) -> bool:
     size_y: int
     size_x, size_y = grid_size(grid)
 
-    return x >= 0 and x < size_x and y >= 0 and y < size_y
+    return 0 <= x < size_x and 0 <= y < size_y
 
 
 def grid_print(grid: Grid[T], /) -> None:
@@ -165,7 +132,7 @@ def calculate_translation(coord_1: Coord, coord_2: Coord, /) -> Coord:
     return (dx, dy)
 
 
-def translate_coord(coord: Coord, translation: Coord, multiplier: int = 1) -> Coord:
+def translate_coord(coord: Coord, translation: Coord) -> Coord:
     x: int
     y: int
     x, y = coord
@@ -174,7 +141,7 @@ def translate_coord(coord: Coord, translation: Coord, multiplier: int = 1) -> Co
     translation_y: int
     translation_x, translation_y = translation
 
-    return (x + (translation_x * multiplier), y + (translation_y * multiplier))
+    return (x + translation_x, y + translation_y)
 
 
 def calculate_antinode_coords(coord_1: Coord, coord_2: Coord, /) -> Tuple[Coord, Coord]:
@@ -185,38 +152,35 @@ def calculate_antinode_coords(coord_1: Coord, coord_2: Coord, /) -> Tuple[Coord,
     translation: Coord = (dx, dy)
     translation_inv: Coord = (-dx, -dy)
 
-    # translation: Coord = calculate_translation(coord_1, coord_2)
-
-    # all_coords: Set[Coord] = {
-    #     translate_coord(coord_1, translation_pos, ),
-    #     translate_coord(coord_1, translation_neg),
-    #     translate_coord(coord_2, translation_pos),
-    #     translate_coord(coord_2, translation_neg),
-    # }
-
-    # return all_coords - {coord_1, coord_2}
-
     return (
-        # translate_coord(coord_1, translation, multiplier=-1),
-        # translate_coord(coord_1, translation, multiplier=2),
         translate_coord(coord_1, translation_inv),
         translate_coord(coord_2, translation),
     )
 
 
-dataset: str = read_dataset()
-grid: Grid[str] = parse_dataset(dataset)
+def main() -> None:
+    dataset: str = read_dataset()
+    grid: MutableGrid[str] = parse_dataset(dataset)
 
-antenna_coords = tuple(find_antennas(grid))
+    # --- Part One ---
 
-# group antennas by frequency
-# af = group_antennas(antenna_coords)
+    antenna_coords: Iterable[Tuple[Coord, str]] = find_antennas(grid)
+    antenna_pair_coords: Iterable[Tuple[Coord, Coord]] = pair_antennas(antenna_coords)
 
-# create all combinations of antennas (of the same frequency)
-pa = pair_antennas(antenna_coords)
+    unique_antinode_coords: Set[Coord] = {
+        antinode_coord
+        for antenna_1, antenna_2 in antenna_pair_coords
+        for antinode_coord in calculate_antinode_coords(antenna_1, antenna_2)
+        if grid_contains(grid, *antinode_coord)
+    }
+    part_1: int = len(unique_antinode_coords)
 
-antenna_1: Coord
-antenna_2: Coord
-for antenna_1, antenna_2 in pa:
-    antinode_coords: Collection[Coord] = calculate_antinode_coords(antenna_1, antenna_2)
-    print(antenna_1, antenna_2, "->", antinode_coords)
+    print("Part 1:", part_1)
+    assert part_1 == 341
+
+    # --- Part Two ---
+    # ...
+
+
+if __name__ == "__main__":
+    main()
