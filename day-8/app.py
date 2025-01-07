@@ -1,6 +1,5 @@
 """Day 8: Resonant Collinearity"""
 
-from dataclasses import dataclass
 import itertools
 from typing import (
     Collection,
@@ -10,8 +9,6 @@ from typing import (
     MutableMapping,
     MutableSequence,
     MutableSet,
-    Optional,
-    Self,
     Sequence,
     Set,
     Tuple,
@@ -29,36 +26,6 @@ Pair: TypeAlias = Tuple[T, T]
 # Constants
 VALUE_EMPTY: Final[str] = "."
 VALUE_ANTINODE: Final[str] = "#"
-
-
-@dataclass
-class Line:
-    gradient: float
-    intercept: float
-
-    @property
-    def m(self) -> float:
-        return self.gradient
-
-    @property
-    def c(self) -> float:
-        return self.intercept
-
-    @classmethod
-    def from_coords(cls, coord_1: Coord, coord_2: Coord) -> Self:
-        dx: int
-        dy: int
-        dx, dy = calculate_translation(coord_1, coord_2)
-
-        gradient: float = dy / dx
-
-        x: int
-        y: int
-        x, y = coord_1
-
-        intercept: float = y - gradient * x
-
-        return cls(gradient, intercept)
 
 
 def read_dataset() -> str:
@@ -220,77 +187,40 @@ def calculate_all_antinode_coords(
     return antinode_coords
 
 
-# def main() -> None:
-dataset: str = read_dataset()
-# dataset: str = (
-#     """
-# ............
-# ........0...
-# .....0......
-# .......0....
-# ....0.......
-# ......A.....
-# ............
-# ............
-# ........A...
-# .........A..
-# ............
-# ............
-# """.strip()
-# )
-grid: MutableGrid[str] = parse_dataset(dataset)
+def main() -> None:
+    dataset: str = read_dataset()
+    grid: MutableGrid[str] = parse_dataset(dataset)
 
-# --- Part One ---
+    # --- Part One ---
 
-antennas: Iterable[Tuple[Coord, str]] = find_antennas(grid)
-antenna_pairs: Mapping[str, Collection[Pair[Coord]]] = pair_antennas(antennas)
+    antennas: Iterable[Tuple[Coord, str]] = find_antennas(grid)
+    antenna_pairs: Mapping[str, Collection[Pair[Coord]]] = pair_antennas(antennas)
 
-unique_antinode_coords: Set[Coord] = {
-    antinode_coord
-    for pairs in antenna_pairs.values()
-    for antenna_1, antenna_2 in pairs
-    for antinode_coord in calculate_antinode_coords(antenna_1, antenna_2)
-    if grid_contains(grid, *antinode_coord)
-}
-part_1: int = len(unique_antinode_coords)
+    unique_antinode_coords: Set[Coord] = {
+        antinode_coord
+        for pairs in antenna_pairs.values()
+        for antenna_1, antenna_2 in pairs
+        for antinode_coord in calculate_antinode_coords(antenna_1, antenna_2)
+        if grid_contains(grid, *antinode_coord)
+    }
+    part_1: int = len(unique_antinode_coords)
 
-print("Part 1:", part_1)
-# assert part_1 == 341
+    print("Part 1:", part_1)
+    assert part_1 == 341
 
-# --- Part Two ---
+    # --- Part Two ---
 
-# coord: Coord
-# value: str
-# for coord, value in grid_iter(grid):
-#     print(coord, value)
+    unique_antinode_coords_with_resonant_harmonics: Set[Coord] = {
+        antinode_coord
+        for pairs in antenna_pairs.values()
+        for antenna_1, antenna_2 in pairs
+        for antinode_coord in calculate_all_antinode_coords(grid, antenna_1, antenna_2)
+    }
+    part_2: int = len(unique_antinode_coords_with_resonant_harmonics)
 
-#     total_antennas_in
-
-#     frequency: str
-#     pairs: Collection[Pair[Coord]]
-#     for frequency, pairs in antenna_pairs.items():
-
-# coord: Coord
-# frequency: str
-# for coord, frequency in antennas:
-
-unique_antinode_coords_with_resonant_harmonics: Set[Coord] = {
-    antinode_coord
-    for pairs in antenna_pairs.values()
-    for antenna_1, antenna_2 in pairs
-    for antinode_coord in calculate_all_antinode_coords(grid, antenna_1, antenna_2)
-}
-part_2: int = len(unique_antinode_coords_with_resonant_harmonics)
-
-print("Part 2:", part_2)
-
-# pairs: Collection[Pair[Coord]]
-# for pairs in antenna_pairs.values():
-#     coord_1: Coord
-#     coord_2: Coord
-#     for coord_1, coord_2 in pairs:
-#         print(coord_1, coord_2, calculate_all_antinode_coords(grid, coord_1, coord_2))
+    print("Part 2:", part_2)
+    assert part_2 == 1134
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()
