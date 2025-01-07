@@ -9,6 +9,7 @@ from typing import (
     Mapping,
     MutableMapping,
     MutableSequence,
+    MutableSet,
     Optional,
     Self,
     Sequence,
@@ -191,67 +192,52 @@ def calculate_antinode_coords(coord_1: Coord, coord_2: Coord, /) -> Pair[Coord]:
     )
 
 
-def get_intersection_coord(l1: Line, l2: Line, /) -> Optional[Coord]:
-    if l1.m == l2.m:
-        return None
+def calculate_all_antinode_coords(
+    grid: Grid[T], coord_1: Coord, coord_2: Coord, /
+) -> Collection[Coord]:
+    dx: int
+    dy: int
+    dx, dy = calculate_translation(coord_1, coord_2)
 
-    x: float = (l2.c - l1.c) / (l1.m / l2.m)
-    y: float = l1.m * x + l1.c
+    translation: Coord = (dx, dy)
+    translation_inv: Coord = (-dx, -dy)
 
-    x_int: int = int(x)
-    y_int: int = int(y)
+    antinode_coords: MutableSet[Coord] = set()
+    coord: Coord
 
-    if x != x_int or y != y_int:
-        return None
+    # Work "backwards" from coord 1
+    coord = coord_1
+    while grid_contains(grid, *coord):
+        antinode_coords.add(coord)
+        coord = translate_coord(coord, translation_inv)
 
-    return (x_int, y_int)
+    # Work "forwards" from coord 1
+    coord = coord_1
+    while grid_contains(grid, *coord):
+        antinode_coords.add(coord)
+        coord = translate_coord(coord, translation)
 
-
-def pair_antenna_pairs(
-    antenna_pairs: Mapping[str, Collection[Pair[Coord]]], /
-) -> Collection[Pair[Pair[Coord]]]:
-    return tuple(
-        pair
-        for pairs in antenna_pairs.values()
-        for pair in itertools.combinations(pairs, 2)
-    )
-
-
-def get_resonant_harmonic_antinode_coords(
-    antenna_pair_pairs: Iterable[Pair[Pair[Coord]]], /
-) -> Iterable[Coord]:
-    antenna_pair_1: Pair[Coord]
-    antenna_pair_2: Pair[Coord]
-    for antenna_pair_1, antenna_pair_2 in antenna_pair_pairs:
-        line_1: Line = Line.from_coords(*antenna_pair_1)
-        line_2: Line = Line.from_coords(*antenna_pair_2)
-
-        intersection: Optional[Coord] = get_intersection_coord(line_1, line_2)
-
-        print(line_1, line_2, intersection) # TEMP
-
-        if intersection is None:
-            continue
-
-        yield intersection
+    return antinode_coords
 
 
 # def main() -> None:
-# dataset: str = read_dataset()
-dataset: str = (
-    """
-T....#....
-...T......
-.T....#...
-.........#
-..#.......
-..........
-...#......
-..........
-....#.....
-..........
-""".strip()
-)
+dataset: str = read_dataset()
+# dataset: str = (
+#     """
+# ............
+# ........0...
+# .....0......
+# .......0....
+# ....0.......
+# ......A.....
+# ............
+# ............
+# ........A...
+# .........A..
+# ............
+# ............
+# """.strip()
+# )
 grid: MutableGrid[str] = parse_dataset(dataset)
 
 # --- Part One ---
@@ -272,14 +258,39 @@ print("Part 1:", part_1)
 # assert part_1 == 341
 
 # --- Part Two ---
-antenna_pair_pairs: Collection[Pair[Pair[Coord]]] = pair_antenna_pairs(antenna_pairs)
-resonant_harmonic_antinodes: Set[Coord] = {
-    antinode_coord
-    for antinode_coord in get_resonant_harmonic_antinode_coords(antenna_pair_pairs)
-    if grid_contains(grid, *antinode_coord)
-}
 
-# NOTE: Maybe lines and gradients are complicating things?
+# coord: Coord
+# value: str
+# for coord, value in grid_iter(grid):
+#     print(coord, value)
+
+#     total_antennas_in
+
+#     frequency: str
+#     pairs: Collection[Pair[Coord]]
+#     for frequency, pairs in antenna_pairs.items():
+
+# coord: Coord
+# frequency: str
+# for coord, frequency in antennas:
+
+unique_antinode_coords_with_resonant_harmonics: Set[Coord] = {
+    antinode_coord
+    for pairs in antenna_pairs.values()
+    for antenna_1, antenna_2 in pairs
+    for antinode_coord in calculate_all_antinode_coords(grid, antenna_1, antenna_2)
+}
+part_2: int = len(unique_antinode_coords_with_resonant_harmonics)
+
+print("Part 2:", part_2)
+
+# pairs: Collection[Pair[Coord]]
+# for pairs in antenna_pairs.values():
+#     coord_1: Coord
+#     coord_2: Coord
+#     for coord_1, coord_2 in pairs:
+#         print(coord_1, coord_2, calculate_all_antinode_coords(grid, coord_1, coord_2))
+
 
 # if __name__ == "__main__":
 #     main()
