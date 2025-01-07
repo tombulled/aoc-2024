@@ -1,5 +1,6 @@
 """Day 8: Resonant Collinearity"""
 
+from dataclasses import dataclass
 import itertools
 from typing import (
     Collection,
@@ -8,6 +9,8 @@ from typing import (
     Mapping,
     MutableMapping,
     MutableSequence,
+    Optional,
+    Self,
     Sequence,
     Set,
     Tuple,
@@ -20,10 +23,41 @@ T = TypeVar("T")
 Coord: TypeAlias = Tuple[int, int]
 Grid: TypeAlias = Sequence[Sequence[T]]
 MutableGrid: TypeAlias = MutableSequence[MutableSequence[T]]
+Pair: TypeAlias = Tuple[T, T]
 
 # Constants
 VALUE_EMPTY: Final[str] = "."
 VALUE_ANTINODE: Final[str] = "#"
+
+
+@dataclass
+class Line:
+    gradient: float
+    intercept: float
+
+    @property
+    def m(self) -> float:
+        return self.gradient
+
+    @property
+    def c(self) -> float:
+        return self.intercept
+
+    @classmethod
+    def from_coords(cls, coord_1: Coord, coord_2: Coord) -> Self:
+        dx: int
+        dy: int
+        dx, dy = calculate_translation(coord_1, coord_2)
+
+        gradient: float = dy / dx
+
+        x: int
+        y: int
+        x, y = coord_1
+
+        intercept: float = y - gradient * x
+
+        return cls(gradient, intercept)
 
 
 def read_dataset() -> str:
@@ -86,7 +120,7 @@ def find_antennas(grid: Grid[str], /) -> Iterable[Tuple[Coord, str]]:
     coord: Coord
     value: str
     for coord, value in grid_iter(grid):
-        if value == VALUE_EMPTY:
+        if value in (VALUE_EMPTY, VALUE_ANTINODE):
             continue
 
         yield (coord, value)
@@ -107,12 +141,11 @@ def group_antennas(
 
 def pair_antennas(
     antennas: Iterable[Tuple[Coord, str]], /
-) -> Iterable[Tuple[Coord, Coord]]:
-    grouped_antennas: Mapping[str, Collection[Coord]] = group_antennas(antennas)
-
-    coords: Collection[Coord]
-    for coords in grouped_antennas.values():
-        yield from itertools.combinations(coords, 2)
+) -> Mapping[str, Collection[Pair[Coord]]]:
+    return {
+        frequency: tuple(itertools.combinations(coords, 2))
+        for frequency, coords in group_antennas(antennas).items()
+    }
 
 
 def calculate_translation(coord_1: Coord, coord_2: Coord, /) -> Coord:
@@ -144,7 +177,7 @@ def translate_coord(coord: Coord, translation: Coord) -> Coord:
     return (x + translation_x, y + translation_y)
 
 
-def calculate_antinode_coords(coord_1: Coord, coord_2: Coord, /) -> Tuple[Coord, Coord]:
+def calculate_antinode_coords(coord_1: Coord, coord_2: Coord, /) -> Pair[Coord]:
     dx: int
     dy: int
     dx, dy = calculate_translation(coord_1, coord_2)
@@ -158,29 +191,95 @@ def calculate_antinode_coords(coord_1: Coord, coord_2: Coord, /) -> Tuple[Coord,
     )
 
 
-def main() -> None:
-    dataset: str = read_dataset()
-    grid: MutableGrid[str] = parse_dataset(dataset)
+def get_intersection_coord(l1: Line, l2: Line, /) -> Optional[Coord]:
+    if l1.m == l2.m:
+        return None
 
-    # --- Part One ---
+    x: float = (l2.c - l1.c) / (l1.m / l2.m)
+    y: float = l1.m * x + l1.c
 
-    antenna_coords: Iterable[Tuple[Coord, str]] = find_antennas(grid)
-    antenna_pair_coords: Iterable[Tuple[Coord, Coord]] = pair_antennas(antenna_coords)
+    x_int: int = int(x)
+    y_int: int = int(y)
 
-    unique_antinode_coords: Set[Coord] = {
-        antinode_coord
-        for antenna_1, antenna_2 in antenna_pair_coords
-        for antinode_coord in calculate_antinode_coords(antenna_1, antenna_2)
-        if grid_contains(grid, *antinode_coord)
-    }
-    part_1: int = len(unique_antinode_coords)
+    if x != x_int or y != y_int:
+        return None
 
-    print("Part 1:", part_1)
-    assert part_1 == 341
-
-    # --- Part Two ---
-    # ...
+    return (x_int, y_int)
 
 
-if __name__ == "__main__":
-    main()
+def pair_antenna_pairs(
+    antenna_pairs: Mapping[str, Collection[Pair[Coord]]], /
+) -> Collection[Pair[Pair[Coord]]]:
+    return tuple(
+        pair
+        for pairs in antenna_pairs.values()
+        for pair in itertools.combinations(pairs, 2)
+    )
+
+
+def get_resonant_harmonic_antinode_coords(
+    antenna_pair_pairs: Iterable[Pair[Pair[Coord]]], /
+) -> Iterable[Coord]:
+    antenna_pair_1: Pair[Coord]
+    antenna_pair_2: Pair[Coord]
+    for antenna_pair_1, antenna_pair_2 in antenna_pair_pairs:
+        line_1: Line = Line.from_coords(*antenna_pair_1)
+        line_2: Line = Line.from_coords(*antenna_pair_2)
+
+        intersection: Optional[Coord] = get_intersection_coord(line_1, line_2)
+
+        print(line_1, line_2, intersection) # TEMP
+
+        if intersection is None:
+            continue
+
+        yield intersection
+
+
+# def main() -> None:
+# dataset: str = read_dataset()
+dataset: str = (
+    """
+T....#....
+...T......
+.T....#...
+.........#
+..#.......
+..........
+...#......
+..........
+....#.....
+..........
+""".strip()
+)
+grid: MutableGrid[str] = parse_dataset(dataset)
+
+# --- Part One ---
+
+antennas: Iterable[Tuple[Coord, str]] = find_antennas(grid)
+antenna_pairs: Mapping[str, Collection[Pair[Coord]]] = pair_antennas(antennas)
+
+unique_antinode_coords: Set[Coord] = {
+    antinode_coord
+    for pairs in antenna_pairs.values()
+    for antenna_1, antenna_2 in pairs
+    for antinode_coord in calculate_antinode_coords(antenna_1, antenna_2)
+    if grid_contains(grid, *antinode_coord)
+}
+part_1: int = len(unique_antinode_coords)
+
+print("Part 1:", part_1)
+# assert part_1 == 341
+
+# --- Part Two ---
+antenna_pair_pairs: Collection[Pair[Pair[Coord]]] = pair_antenna_pairs(antenna_pairs)
+resonant_harmonic_antinodes: Set[Coord] = {
+    antinode_coord
+    for antinode_coord in get_resonant_harmonic_antinode_coords(antenna_pair_pairs)
+    if grid_contains(grid, *antinode_coord)
+}
+
+# NOTE: Maybe lines and gradients are complicating things?
+
+# if __name__ == "__main__":
+#     main()
