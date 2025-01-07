@@ -8,6 +8,7 @@ from typing import (
     Mapping,
     MutableMapping,
     MutableSequence,
+    MutableSet,
     Sequence,
     Set,
     Tuple,
@@ -20,6 +21,7 @@ T = TypeVar("T")
 Coord: TypeAlias = Tuple[int, int]
 Grid: TypeAlias = Sequence[Sequence[T]]
 MutableGrid: TypeAlias = MutableSequence[MutableSequence[T]]
+Pair: TypeAlias = Tuple[T, T]
 
 # Constants
 VALUE_EMPTY: Final[str] = "."
@@ -86,7 +88,7 @@ def find_antennas(grid: Grid[str], /) -> Iterable[Tuple[Coord, str]]:
     coord: Coord
     value: str
     for coord, value in grid_iter(grid):
-        if value == VALUE_EMPTY:
+        if value in (VALUE_EMPTY, VALUE_ANTINODE):
             continue
 
         yield (coord, value)
@@ -107,12 +109,11 @@ def group_antennas(
 
 def pair_antennas(
     antennas: Iterable[Tuple[Coord, str]], /
-) -> Iterable[Tuple[Coord, Coord]]:
-    grouped_antennas: Mapping[str, Collection[Coord]] = group_antennas(antennas)
-
-    coords: Collection[Coord]
-    for coords in grouped_antennas.values():
-        yield from itertools.combinations(coords, 2)
+) -> Mapping[str, Collection[Pair[Coord]]]:
+    return {
+        frequency: tuple(itertools.combinations(coords, 2))
+        for frequency, coords in group_antennas(antennas).items()
+    }
 
 
 def calculate_translation(coord_1: Coord, coord_2: Coord, /) -> Coord:
@@ -144,7 +145,7 @@ def translate_coord(coord: Coord, translation: Coord) -> Coord:
     return (x + translation_x, y + translation_y)
 
 
-def calculate_antinode_coords(coord_1: Coord, coord_2: Coord, /) -> Tuple[Coord, Coord]:
+def calculate_antinode_coords(coord_1: Coord, coord_2: Coord, /) -> Pair[Coord]:
     dx: int
     dy: int
     dx, dy = calculate_translation(coord_1, coord_2)
@@ -158,18 +159,47 @@ def calculate_antinode_coords(coord_1: Coord, coord_2: Coord, /) -> Tuple[Coord,
     )
 
 
+def calculate_all_antinode_coords(
+    grid: Grid[T], coord_1: Coord, coord_2: Coord, /
+) -> Collection[Coord]:
+    dx: int
+    dy: int
+    dx, dy = calculate_translation(coord_1, coord_2)
+
+    translation: Coord = (dx, dy)
+    translation_inv: Coord = (-dx, -dy)
+
+    antinode_coords: MutableSet[Coord] = set()
+    coord: Coord
+
+    # Work "backwards" from coord 1
+    coord = coord_1
+    while grid_contains(grid, *coord):
+        antinode_coords.add(coord)
+        coord = translate_coord(coord, translation_inv)
+
+    # Work "forwards" from coord 1
+    coord = coord_1
+    while grid_contains(grid, *coord):
+        antinode_coords.add(coord)
+        coord = translate_coord(coord, translation)
+
+    return antinode_coords
+
+
 def main() -> None:
     dataset: str = read_dataset()
     grid: MutableGrid[str] = parse_dataset(dataset)
 
     # --- Part One ---
 
-    antenna_coords: Iterable[Tuple[Coord, str]] = find_antennas(grid)
-    antenna_pair_coords: Iterable[Tuple[Coord, Coord]] = pair_antennas(antenna_coords)
+    antennas: Iterable[Tuple[Coord, str]] = find_antennas(grid)
+    antenna_pairs: Mapping[str, Collection[Pair[Coord]]] = pair_antennas(antennas)
 
     unique_antinode_coords: Set[Coord] = {
         antinode_coord
-        for antenna_1, antenna_2 in antenna_pair_coords
+        for pairs in antenna_pairs.values()
+        for antenna_1, antenna_2 in pairs
         for antinode_coord in calculate_antinode_coords(antenna_1, antenna_2)
         if grid_contains(grid, *antinode_coord)
     }
@@ -179,7 +209,17 @@ def main() -> None:
     assert part_1 == 341
 
     # --- Part Two ---
-    # ...
+
+    unique_antinode_coords_with_resonant_harmonics: Set[Coord] = {
+        antinode_coord
+        for pairs in antenna_pairs.values()
+        for antenna_1, antenna_2 in pairs
+        for antinode_coord in calculate_all_antinode_coords(grid, antenna_1, antenna_2)
+    }
+    part_2: int = len(unique_antinode_coords_with_resonant_harmonics)
+
+    print("Part 2:", part_2)
+    assert part_2 == 1134
 
 
 if __name__ == "__main__":
