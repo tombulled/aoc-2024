@@ -98,6 +98,7 @@ def compact_disk(disk: MutableDisk, /) -> MutableDisk:
             block_chunk: Block = dataclasses.replace(candidate_block, size=chunk_size)
 
             new_disk.append(block_chunk)
+
             free_space.size -= chunk_size
             candidate_block.size -= chunk_size
 
@@ -130,8 +131,13 @@ def calculate_filesystem_checksum(disk: Disk, /) -> int:
 
 dataset: str = read_dataset()
 
+# --- Part One ---
+
 disk: MutableDisk = list(parse_disk_map(dataset))
 compacted_disk: MutableDisk = compact_disk(disk)
 
 part_1: int = calculate_filesystem_checksum(compacted_disk)
 assert part_1 == 6435922584968
+
+# --- Part Two ---
+# ...
