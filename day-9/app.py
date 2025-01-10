@@ -6,13 +6,17 @@ from typing import Final, Iterable, Self, Type
 
 EXAMPLE_INPUT: Final[str] = "2333133121414131402"
 
-FREE: Final[str] = "."
+FREE: Final[str] = "."  # WARN: NOT USED??
 
 
-class _ChainedEnum(IntEnum):
+class _CyclicalEnum(IntEnum):
     @classmethod
     def first(cls: Type[Self], /) -> Self:
         return cls(1)
+
+    @classmethod
+    def last(cls: Type[Self], /) -> Self:
+        return cls(len(cls))
 
     def next(self: Self, /) -> Self:
         cls: Type[Self] = type(self)
@@ -21,15 +25,23 @@ class _ChainedEnum(IntEnum):
         return cls(next_value)
 
 
-class DiskMapEntryType(_ChainedEnum):
+class DiskMapEntryType(_CyclicalEnum):
     FILE_SIZE = auto()
     FREE_SPACE = auto()
 
 
 @dataclass
-class DiskMapEntry:
-    type: DiskMapEntryType
-    value: int
+class Block:
+    size: int
+
+
+class FreeSpace(Block):
+    pass
+
+
+@dataclass
+class File(Block):
+    id: int
 
 
 def read_dataset() -> str:
@@ -37,21 +49,27 @@ def read_dataset() -> str:
         return file.read()
 
 
-def parse_disk_map(disk_map: str, /) -> Iterable[DiskMapEntry]:
+def parse_disk_map(disk_map: str, /) -> Iterable[Block]:
     entry_type: DiskMapEntryType = DiskMapEntryType.first()
+    file_id: int = 0
 
     character: str
     for character in disk_map:
         value: int = int(character)
 
-        yield DiskMapEntry(entry_type, value)
+        match entry_type:
+            case DiskMapEntryType.FILE_SIZE:
+                yield File(size=value, id=file_id)
+                file_id += 1
+            case DiskMapEntryType.FREE_SPACE:
+                yield FreeSpace(size=value)
 
         entry_type = entry_type.next()
 
 
 # dataset: str = read_dataset()
 dataset: str = EXAMPLE_INPUT
-disk_map_entries: Iterable[DiskMapEntry] = parse_disk_map(dataset)
+blocks: Iterable[Block] = parse_disk_map(dataset)
 
-for entry in disk_map_entries:
-    print(entry)
+for block in blocks:
+    print(block)
