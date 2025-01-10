@@ -12,8 +12,6 @@ MutableDisk: TypeAlias = MutableSequence["Block"]
 
 EXAMPLE_INPUT: Final[str] = "2333133121414131402"
 
-# FREE: Final[str] = "."  # WARN: NOT USED??
-
 
 class _CyclicalEnum(IntEnum):
     @classmethod
@@ -81,52 +79,108 @@ def parse_disk_map(disk_map: str, /) -> Iterable[Block]:
 
         entry_type = entry_type.next()
 
+
 def get_disk_size(disk: Disk, /) -> int:
     return sum(block.size for block in disk)
+
 
 def compact_disk(disk: MutableDisk, /) -> MutableDisk:
     new_disk: MutableDisk = []
 
+    disk_size_before: int = get_disk_size(disk)
+
     block: Block
     for block in disk:
-        if not isinstance(block, FreeSpace):
+        if not isinstance(block, FreeSpace) or block.size == 0:
             if block.size > 0:
                 new_disk.append(block)
+
+            print("Adding block as-is:", block)
 
             continue
 
         free_space: FreeSpace = block
 
+        print("Found free space, will find files to fill it:", free_space)
+
         candidate_block: Block
         for candidate_block in reversed(disk):
+            if free_space.size == 0:
+                print("Free space has been filled, will stop there")
+                break
+            if candidate_block is block:
+                break
             if isinstance(candidate_block, FreeSpace) or candidate_block.size == 0:
+                print("Candidate is free space or empty, skipping:", candidate_block)
                 continue
+
+            print("Found suitable candidate block:", candidate_block)
 
             chunk_size: int = min(free_space.size, candidate_block.size)
             block_chunk: Block = dataclasses.replace(candidate_block, size=chunk_size)
 
+            print("Will fill free space with chunk:", block_chunk)
+
             new_disk.append(block_chunk)
             free_space.size -= chunk_size
+            candidate_block.size -= chunk_size
 
-        if free_space.size > 0:
-            new_disk.append(free_space)
+        print("New disk currently:", render_disk(new_disk))
+        print("Old disk currently:", render_disk(disk))
+        print()
+
+        # if free_space.size > 0:
+        #     new_disk.append(free_space)
+
+    disk_size_after: int = get_disk_size(new_disk)
+    free_space_padding: int = disk_size_before - disk_size_after
+
+    print("Before:", disk_size_before)
+    print("After:", disk_size_after)
+    print("Padding:", free_space_padding)
+
+    if free_space_padding > 0:
+        new_disk.append(FreeSpace(free_space_padding))
 
     return new_disk
+
+
+# def calculate_filesystem_checksum(disk: Disk, /) -> int:
+#     position: int = 0
+
+#     index: int
+#     for index, block in enumerate(disk):
+#         print(position, index, block)
+
+#         # block_checksum: int =
+
+#     return 0  # TEMP
+
 
 def render_disk(disk: Disk, /) -> str:
     return "".join(block.render() for block in disk)
 
+
 def print_disk(disk: Disk, /) -> None:
     print(render_disk(disk))
+
 
 # dataset: str = read_dataset()
 dataset: str = EXAMPLE_INPUT
 disk: MutableDisk = list(parse_disk_map(dataset))
 
-# for block in blocks:
-#     print(block)
+disk_render_expected: str = "00...111...2...333.44.5555.6666.777.888899"
+disk_render_actual: str = render_disk(disk)
+print("Expected:", disk_render_expected)
+print("Actual:  ", disk_render_actual)
+print("Correct: ", disk_render_actual == disk_render_expected)
 
 compacted_disk: MutableDisk = compact_disk(disk)
 
-print_disk(disk)
-print_disk(compacted_disk)
+compacted_disk_render_expected: str = "0099811188827773336446555566.............."
+compacted_disk_render_actual: str = render_disk(compacted_disk)
+print("Expected:", compacted_disk_render_expected)
+print("Actual:  ", compacted_disk_render_actual)
+print("Correct: ", compacted_disk_render_actual == compacted_disk_render_expected)
+
+# print(calculate_filesystem_checksum(compacted_disk))
