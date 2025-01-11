@@ -72,7 +72,7 @@ def get_disk_size(disk: Disk, /) -> int:
     return sum(block.size for block in disk)
 
 
-def compact_disk(disk: MutableDisk, /) -> MutableDisk:
+def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> MutableDisk:
     disk_size: int = get_disk_size(disk)
 
     new_disk: MutableDisk = []
@@ -94,13 +94,13 @@ def compact_disk(disk: MutableDisk, /) -> MutableDisk:
             if isinstance(candidate_block, FreeSpace) or candidate_block.size == 0:
                 continue
 
-            chunk_size: int = min(free_space.size, candidate_block.size)
-            block_chunk: Block = dataclasses.replace(candidate_block, size=chunk_size)
+            fragment_size = min(free_space.size, candidate_block.size)
+            block_fragment = dataclasses.replace(candidate_block, size=fragment_size)
 
-            new_disk.append(block_chunk)
+            new_disk.append(block_fragment)
 
-            free_space.size -= chunk_size
-            candidate_block.size -= chunk_size
+            free_space.size -= fragment_size
+            candidate_block.size -= fragment_size
 
     free_space_padding: int = disk_size - get_disk_size(new_disk)
 
