@@ -5,16 +5,20 @@ import dataclasses
 from dataclasses import dataclass
 from enum import IntEnum, auto
 from typing import (
+    Generic,
     Iterable,
+    MutableMapping,
     MutableSequence,
     MutableSet,
     Self,
     Sequence,
     Type,
     TypeAlias,
+    TypeVar,
 )
 
 # Typing
+T = TypeVar("T")
 Disk: TypeAlias = Sequence["Node"]
 MutableDisk: TypeAlias = MutableSequence["Node"]
 
@@ -64,6 +68,12 @@ class File(Node):
 
     def render(self) -> str:
         return str(self.id) * self.size
+
+
+# @dataclass
+# class Entry(Generic[T]):
+#     index: int
+#     value: T
 
 
 def read_dataset() -> str:
@@ -133,9 +143,7 @@ def compact_disk_old(
                 continue
 
             fragment_size: int = min(free_space.size, file.size)
-            block_fragment: Node = dataclasses.replace(
-                file, size=fragment_size
-            )
+            block_fragment: Node = dataclasses.replace(file, size=fragment_size)
 
             new_disk.append(block_fragment)
 
@@ -153,11 +161,40 @@ def compact_disk_old(
 def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> None:
     space_padding: int = 0
 
+    search_space_start: int = 0
+    search_space_stop: int = len(disk)
+
     files: Sequence[File] = tuple(
         node
         for node in disk
         if isinstance(node, File) and not node.is_empty()
     )
+    # spaces: MutableMapping[int, Space] = {
+    #     node_index: node
+    #     for node in disk
+    #     if
+    # }
+
+    # files: MutableMapping[int, File] = {}
+    # spaces: MutableMapping[int, Space] = {}
+    # files: MutableSequence[Entry[File]] = []
+    # spaces: MutableSequence[Entry[Space]] = []
+    # files: MutableSequence[File] = []
+    # spaces: MutableSequence[Space] = []
+
+    # node_index: int
+    # node: Node
+    # for node_index, node in enumerate(disk):
+    #     if isinstance(node, File):
+    #         # files.append(Entry(node_index, node))
+    #         files.append(node)
+    #     elif isinstance(node, Space):
+    #         # spaces.append(Entry(node_index, node))
+    #         spaces.append(node)
+
+    # print("Files: ", files)
+    # print("Spaces:", spaces)
+    # return
 
     # node: Node
     # for node in reversed(disk):
@@ -167,8 +204,39 @@ def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> None:
 
     #     file: File = node
 
+    # file_index: int
+    # file: File
+    # for file_index, file in reversed(files.items()):
+    # file_entry: Entry[File]
+    # for file_entry in reversed(files):
+    #     file_index: int = file_entry.index
+    #     file: File = file_entry.value
+        # print("Considering file", file, "at index", file_index)
     file: File
     for file in reversed(files):
+        print("before:", render_disk(disk))
+
+        # space_index: int
+        # space: Space
+        # for space_index, space in spaces.items():
+        # space_entry: Entry[Space]
+        # for space_entry in spaces:
+        #     space_index: int = space_entry.index
+        #     space: Space = space_entry.value
+
+            # # Don't go past ourselves!
+            # if space_index > file_index:
+            #     break
+
+            # # We've already moved the whole file!
+            # if file.is_empty():
+            #     break
+
+            # # If (for whatever reason) the free space is empty,
+            # # don't consider it?
+            # if space.is_empty():
+            #     continue
+
         node2_index: int
         node2: Node
         for node2_index, node2 in enumerate(disk):
@@ -202,12 +270,18 @@ def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> None:
             space.size -= fragment_size
             file.size -= fragment_size
             space_padding += fragment_size
+            # space_entry.index += 1
 
             if space.is_empty():
                 disk.remove(space)
+                # NOTE: Ideally would remove space, but is problematic
 
         if file.is_empty():
             disk.remove(file)
+
+        print("after: ", render_disk(disk))
+        # print(spaces)
+        print()
 
     # Right-pad the disk with free space
     if space_padding > 0:
@@ -246,8 +320,8 @@ def print_disk(disk: Disk, /) -> None:
     print(render_disk(disk))
 
 
-# dataset: str = "2333133121414131402"
-dataset: str = read_dataset()
+dataset: str = "2333133121414131402"
+# dataset: str = read_dataset()
 disk: MutableDisk = list(parse_disk_map(dataset))
 # disk2: MutableDisk = clone_disk(disk)  # TEMP!!!
 
@@ -257,12 +331,13 @@ disk: MutableDisk = list(parse_disk_map(dataset))
 
 # disk_part_1: MutableDisk = compact_disk(disk)
 import time
+
 t0 = time.time()
 compact_disk(disk)
-print("Took:", time.time()-t0)
+print("Took:", time.time() - t0)
 
 # print_disk(disk_part_1)
-# print_disk(disk)
+print_disk(disk)
 
 # checksum_part_1: int = calculate_filesystem_checksum(disk_part_1)
 checksum_part_1: int = calculate_filesystem_checksum(disk)
