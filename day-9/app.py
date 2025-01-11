@@ -1,9 +1,10 @@
 """Day 9: Disk Fragmenter"""
 
+from abc import ABC, abstractmethod
 import dataclasses
 from dataclasses import dataclass
 from enum import IntEnum, auto
-from typing import Iterable, MutableSequence, Self, Sequence, Type, TypeAlias
+from typing import Iterable, MutableSequence, MutableSet, Self, Sequence, Type, TypeAlias
 
 # Typing
 Disk: TypeAlias = Sequence["Block"]
@@ -32,17 +33,26 @@ class DiskMapEntryType(_CyclicalEnum):
 
 
 @dataclass
-class Block:
+class Block(ABC):
     size: int
+
+    @abstractmethod
+    def render(self) -> str:
+        raise NotImplementedError
 
 
 class FreeSpace(Block):
-    pass
+    # pass
+    def render(self) -> str:
+        return "." * self.size
 
 
 @dataclass
 class File(Block):
     id: int
+
+    def render(self) -> str:
+        return str(self.id) * self.size
 
 
 def read_dataset() -> str:
@@ -72,8 +82,11 @@ def get_disk_size(disk: Disk, /) -> int:
     return sum(block.size for block in disk)
 
 
-def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> MutableDisk:
+def compact_disk(
+    disk: MutableDisk, /, *, fragment: bool = True, attempt_once: bool = False
+) -> MutableDisk:
     disk_size: int = get_disk_size(disk)
+    considered_file_ids: MutableSet[int] = set()
 
     new_disk: MutableDisk = []
 
@@ -91,16 +104,28 @@ def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> MutableDisk:
         for candidate_block in reversed(disk):
             if free_space.size == 0 or candidate_block is block:
                 break
-            if isinstance(candidate_block, FreeSpace) or candidate_block.size == 0:
+            if not isinstance(candidate_block, File) or candidate_block.size == 0:
                 continue
 
-            fragment_size = min(free_space.size, candidate_block.size)
-            block_fragment = dataclasses.replace(candidate_block, size=fragment_size)
+            file: File = candidate_block
+
+            if attempt_once and file.id in considered_file_ids:
+                continue
+
+            considered_file_ids.add(file.id)
+
+            if not fragment and file.size > free_space.size:
+                continue
+
+            fragment_size: int = min(free_space.size, file.size)
+            block_fragment: Block = dataclasses.replace(
+                file, size=fragment_size
+            )
 
             new_disk.append(block_fragment)
 
             free_space.size -= fragment_size
-            candidate_block.size -= fragment_size
+            file.size -= fragment_size
 
     free_space_padding: int = disk_size - get_disk_size(new_disk)
 
@@ -129,15 +154,32 @@ def calculate_filesystem_checksum(disk: Disk, /) -> int:
     return checksum
 
 
-dataset: str = read_dataset()
+def print_disk(disk: Disk, /) -> None:
+    print("".join(block.render() for block in disk))
+
+
+dataset: str = "2333133121414131402"
+# dataset: str = read_dataset()
+disk: MutableDisk = list(parse_disk_map(dataset))
+disk2: MutableDisk = [dataclasses.replace(block) for block in disk]  # TEMP!!!
+
+print_disk(disk)
 
 # --- Part One ---
 
-disk: MutableDisk = list(parse_disk_map(dataset))
-compacted_disk: MutableDisk = compact_disk(disk)
+disk_part_1: MutableDisk = compact_disk(disk)
 
-part_1: int = calculate_filesystem_checksum(compacted_disk)
-assert part_1 == 6435922584968
+print_disk(disk_part_1)
+
+checksum_part_1: int = calculate_filesystem_checksum(disk_part_1)
+# assert checksum_part_1 == 6435922584968
 
 # --- Part Two ---
-# ...
+
+print()
+disk_part_2: MutableDisk = compact_disk(disk2, fragment=False)
+
+print_disk(disk_part_2)
+
+checksum_part_2: int = calculate_filesystem_checksum(disk_part_2)
+# assert checksum_part_2 == 6435922584968
