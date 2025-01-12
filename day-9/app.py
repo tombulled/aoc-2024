@@ -1,15 +1,14 @@
 """Day 9: Disk Fragmenter"""
 
-import dataclasses
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import IntEnum, auto
+from enum import Enum, IntEnum, auto
 from typing import (
+    Callable,
     Final,
     Generic,
     Iterable,
     MutableSequence,
-    MutableSet,
     Optional,
     Self,
     Sequence,
@@ -44,10 +43,13 @@ class DiskMapEntryType(_CyclicalEnum):
     SPACE = auto()
 
 
+class Direction(Enum):
+    LTR = auto()
+    RTL = auto()
+
+
 @dataclass
 class Block(ABC):
-    # size: int
-
     @abstractmethod
     def render(self) -> str:
         raise NotImplementedError
@@ -78,6 +80,9 @@ class Fragment(Generic[B]):
     index: int
     block: B
     size: int
+
+    def render(self) -> str:
+        return self.block.render() * self.size
 
 
 def read_dataset() -> str:
@@ -112,78 +117,30 @@ def parse_disk_map(disk_map: str, /) -> MutableDisk:
     return disk
 
 
-# def get_disk_size(disk: Disk, /) -> int:
-#     return sum(node.size for node in disk)
+def iter_fragments(
+    disk: Disk,
+    /,
+    *,
+    direction: Direction = Direction.LTR,
+    predicate: Optional[Callable[[Block], bool]] = None,
+    index_start: int = 0,
+    index_end: Optional[int] = None,
+) -> Iterable[Fragment[Block]]:
+    if index_end is None:
+        index_end = len(disk)
 
+    block_indices: Iterable[int]
 
-# def clone_disk(disk: Disk, /) -> MutableDisk:
-#     return [dataclasses.replace(node) for node in disk]
+    match direction:
+        case direction.LTR:
+            block_indices = range(index_start, index_end)
+        case direction.RTL:
+            block_indices = range(index_end - 1, -1 + index_start, -1)
 
-
-# def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> None:
-#     space_padding: int = 0
-
-#     files: Sequence[File] = tuple(
-#         node for node in disk if isinstance(node, File) and not node.is_empty()
-#     )
-
-#     file: File
-#     for file in reversed(files):
-#         node2_index: int
-#         node2: Node
-#         for node2_index, node2 in enumerate(disk):
-#             # Don't go past ourselves!
-#             if node2 is file:
-#                 break
-
-#             # We've already moved the whole file!
-#             if file.is_empty():
-#                 break
-
-#             # Only consider non-empty free space as possible locations
-#             # to move our file.
-#             if not isinstance(node2, Space) or node2.is_empty():
-#                 continue
-
-#             space_index: int = node2_index
-#             space: Space = node2
-
-#             # If we can't fragment the file and the free space doesn't
-#             # contain enough space to fit the file as-is, we can't
-#             # move it here, so skip this location.
-#             if not fragment and file.size > space.size:
-#                 continue
-
-#             fragment_size: int = min(space.size, file.size)
-#             fragment_node: File = dataclasses.replace(file, size=fragment_size)
-
-#             disk.insert(space_index, fragment_node)
-
-#             space.size -= fragment_size
-#             file.size -= fragment_size
-#             space_padding += fragment_size
-
-#             if space.is_empty():
-#                 disk.remove(space)
-
-#         if file.is_empty():
-#             disk.remove(file)
-
-#     # Right-pad the disk with free space
-#     if space_padding > 0:
-#         last_node: Node = disk[-1]
-
-#         if isinstance(last_node, Space):
-#             last_node.size += space_padding
-#         else:
-#             disk.append(Space(space_padding))
-
-
-def iter_fragments(disk: Disk, /) -> Iterable[Fragment[File]]:
-    fragment: Optional[Fragment] = None
+    fragment: Optional[Fragment[Block]] = None
 
     block_index: int
-    for block_index in range(len(disk) - 1, -1, -1):
+    for block_index in block_indices:
         block: Block = disk[block_index]
 
         # If there's an existing fragment
@@ -191,14 +148,14 @@ def iter_fragments(disk: Disk, /) -> Iterable[Fragment[File]]:
             # If this block is a part of the fragment, update
             # the fragment metadata
             if fragment.block is block:
-                fragment.index = block_index
+                fragment.index = min(fragment.index, block_index)
                 fragment.size += 1
             # Otherwise, yield what we have as the fragment is finished
             else:
                 yield fragment
                 fragment = None
-        
-        if not isinstance(block, File):
+
+        if predicate is not None and not predicate(block):
             fragment = None
         elif fragment is None:
             fragment = Fragment(index=block_index, block=block, size=1)
@@ -208,56 +165,78 @@ def iter_fragments(disk: Disk, /) -> Iterable[Fragment[File]]:
 
 
 def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> None:
+    file_fragments: Iterable[Fragment[Block]] = iter_fragments(
+        disk,
+        direction=Direction.RTL,
+        predicate=lambda block: isinstance(block, File),
+    )
+
     search_space_start: int = 0
-    # search_space_stop: int = 0
+
+    file_fragment: Fragment[Block]
+    for file_fragment in file_fragments:
+        assert isinstance(file_fragment.block, File)
+
+        # file_index: int = file_fragment.index
+        # file_size: int = file_fragment.size
+        file: File = file_fragment.block
+
+        search_space_end: int = file_fragment.index
+
+        space_fragments: Iterable[Fragment[Block]] = iter_fragments(
+            disk,
+            direction=Direction.LTR,
+            predicate=lambda block: isinstance(block, Space),
+            index_start=search_space_start,
+            index_end=search_space_end,
+        )
+
+        space_fragment_index: int
+        space_fragment: Fragment[Block]
+        for space_fragment_index, space_fragment in enumerate(space_fragments):
+            if file_fragment.size == 0:
+                break
+
+            assert isinstance(space_fragment.block, Space)
+
+            space_index: int = space_fragment.index
+            space_size: int = space_fragment.size
+            space: Space = space_fragment.block
+
+            if space_fragment_index == 0:
+                search_space_start = space_fragment.index
+
+            # If we can't fragment the file and the free space doesn't
+            # contain enough space to fit the file as-is, we can't
+            # move it here, so skip this location.
+            if not fragment and file_fragment.size > space_fragment.size:
+                continue
+
+            fragment_size: int = min(space_fragment.size, file_fragment.size)
+
+            disk[space_index : space_index + fragment_size] = [file] * fragment_size
+            disk[
+                file_fragment.index
+                + file_fragment.size
+                - fragment_size : file_fragment.index
+                + file_fragment.size
+            ] = [space] * fragment_size
+
+            file_fragment.size -= fragment_size
+
+
+def calculate_filesystem_checksum(disk: Disk, /) -> int:
+    checksum: int = 0
 
     block_index: int
-    for block_index in range(len(disk) - 1, -1, -1):
-        block: Block = disk[block_index]
-
+    block: Block
+    for block_index, block in enumerate(disk):
         if not isinstance(block, File):
             continue
 
-        file_index: int = block_index
-        file: File = block
+        checksum += block_index * block.id
 
-        print(block_index, block)
-
-        # seen_space: bool = False
-
-        # block2_index: int
-        # for block2_index in range(search_space_start, block_index):
-        #     block2: Block = disk[block2_index]
-
-        #     if not isinstance(block2, Space):
-        #         continue
-
-        #     if not seen_space:
-        #         search_space_start = block2_index
-
-        #     seen_space = True
-
-        #     space_index: int = block2_index
-        #     space: Space = block2
-
-
-# def calculate_filesystem_checksum(disk: Disk, /) -> int:
-#     position: int = 0
-#     checksum: int = 0
-
-#     node: Node
-#     for node in disk:
-#         if not isinstance(node, File):
-#             continue
-
-#         node_checksum: int = sum(
-#             (position + bit_index) * node.id for bit_index in range(node.size)
-#         )
-
-#         position += node.size
-#         checksum += node_checksum
-
-#     return checksum
+    return checksum
 
 
 def render_disk(disk: Disk, /) -> str:
@@ -268,27 +247,29 @@ def print_disk(disk: Disk, /) -> None:
     print(render_disk(disk))
 
 
-dataset: str = "2333133121414131402"
-# dataset: str = read_dataset()
+# dataset: str = "2333133121414131402"
+dataset: str = read_dataset()
 
 disk: MutableDisk = parse_disk_map(dataset)
 
-print_disk(disk)
+# print_disk(disk)
 
-for fragment in iter_fragments(disk):
-    print(fragment)
+# print()
+# for fragment in iter_fragments(disk, direction=Direction.RTL):
+#     print(fragment.render(), fragment)
+# print()
 
 # # --- Part One ---
 
-# import time
+import time
 
-# t0 = time.time()
-# compact_disk(disk)
+t0 = time.time()
+compact_disk(disk)
 # print_disk(disk)
-# print("Took:", time.time() - t0)
+print("Took:", time.time() - t0)
 
-# # checksum_part_1: int = calculate_filesystem_checksum(disk_1)
-# # assert checksum_part_1 == 6435922584968
+checksum_part_1: int = calculate_filesystem_checksum(disk)
+assert checksum_part_1 == 6435922584968
 
 # # --- Part Two ---
 
