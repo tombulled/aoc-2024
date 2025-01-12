@@ -1,6 +1,5 @@
 """Day 9: Disk Fragmenter"""
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum, IntEnum, auto
 from typing import (
@@ -9,6 +8,7 @@ from typing import (
     Generic,
     Iterable,
     MutableSequence,
+    MutableSet,
     Optional,
     Self,
     Sequence,
@@ -17,21 +17,25 @@ from typing import (
     TypeVar,
 )
 
-# Typing
-Disk: TypeAlias = Sequence["Block"]
-MutableDisk: TypeAlias = MutableSequence["Block"]
-
 
 class _CyclicalEnum(IntEnum):
+    """Enum with sequential, cyclical members"""
+
     @classmethod
     def first(cls: Type[Self], /) -> Self:
+        """Get the first member of this enum"""
+
         return cls(1)
 
     @classmethod
     def last(cls: Type[Self], /) -> Self:
+        """Get the last member of this enum"""
+
         return cls(len(cls))
 
     def next(self: Self, /) -> Self:
+        """Get the next member of this enum"""
+
         cls: Type[Self] = type(self)
         next_value: int = self.value % len(cls) + 1
 
@@ -39,50 +43,56 @@ class _CyclicalEnum(IntEnum):
 
 
 class DiskMapEntryType(_CyclicalEnum):
-    FILE = auto()
-    SPACE = auto()
+    """Enum representing the entry types in a disk-map"""
+
+    FILE: int = auto()
+    SPACE: int = auto()
 
 
 class Direction(Enum):
-    LTR = auto()
-    RTL = auto()
+    """Enum representing horizontal direction"""
+
+    LTR: int = auto()
+    RTL: int = auto()
 
 
 @dataclass
-class Block(ABC):
-    @abstractmethod
-    def render(self) -> str:
-        raise NotImplementedError
+class Block:
+    """Base block class"""
+
+    pass
 
 
+@dataclass
 class Space(Block):
-    # pass
-    @staticmethod
-    def render() -> str:
-        return "."
+    """Block representing 'free space'"""
+
+    pass
 
 
 @dataclass
 class File(Block):
+    """Block representing a file with the given id"""
+
     id: int
 
-    def render(self) -> str:
-        return str(self.id)
 
-
+# Constants
 SPACE: Final[Block] = Space()
 
+# Typing
 B = TypeVar("B", bound=Block)
+Disk: TypeAlias = Sequence[Block]
+MutableDisk: TypeAlias = MutableSequence[Block]
 
 
 @dataclass
 class Fragment(Generic[B]):
+    """Class representing a fragment of blocks"""
+
     index: int
     block: B
     size: int
-
-    def render(self) -> str:
-        return self.block.render() * self.size
 
 
 def read_dataset() -> str:
@@ -91,27 +101,39 @@ def read_dataset() -> str:
 
 
 def parse_disk_map(disk_map: str, /) -> MutableDisk:
+    """Parse a disk-map string into a mutable disk"""
+
     entry_type: DiskMapEntryType = DiskMapEntryType.first()
     file_id: int = 0
 
     disk: MutableDisk = []
 
+    # Iterate every character in the disk map
     raw_size: str
     for raw_size in disk_map:
+        # The character represents a size, so parse it as an integer
         size: int = int(raw_size)
 
         block: Block
 
+        # Build the appropriate block depending on what disk-map entry-type
+        # we're currently at
         match entry_type:
             case DiskMapEntryType.FILE:
                 block = File(file_id)
+
+                # We've just created a file, so increment the file ID ready
+                # for the next file
                 file_id += 1
             case DiskMapEntryType.SPACE:
                 block = SPACE
 
+        # Add all of the blocks created by this disk-map entry to the disk
         for _ in range(size):
             disk.append(block)
 
+        # Move to the next disk-map entry-type
+        # (as there are only two, this toggles between them)
         entry_type = entry_type.next()
 
     return disk
@@ -124,18 +146,32 @@ def iter_fragments(
     direction: Direction = Direction.LTR,
     predicate: Optional[Callable[[Block], bool]] = None,
     index_start: int = 0,
-    index_end: Optional[int] = None,
+    index_stop: Optional[int] = None,
 ) -> Iterable[Fragment[Block]]:
-    if index_end is None:
-        index_end = len(disk)
+    """
+    Iterate fragments in a disk
+
+    Parameters:
+        disk: The disk to iterate fragments from
+        direction: The direction in which to move along the disk (LTR or RTL)
+        predicate: An optional predicate blocks must match for fragments to be yielded
+        index_start: The index at which to start iterating the disk
+        index_stop: The index at which to stop iterating the disk
+
+    Example:
+        The disk "00...111...2" has fragments "00", "...", "111", "..." and "2"
+    """
+
+    if index_stop is None:
+        index_stop = len(disk)
 
     block_indices: Iterable[int]
 
     match direction:
         case direction.LTR:
-            block_indices = range(index_start, index_end)
+            block_indices = range(index_start, index_stop)
         case direction.RTL:
-            block_indices = range(index_end - 1, -1 + index_start, -1)
+            block_indices = range(index_stop - 1, -1 + index_start, -1)
 
     fragment: Optional[Fragment[Block]] = None
 
@@ -170,6 +206,7 @@ def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> None:
         direction=Direction.RTL,
         predicate=lambda block: isinstance(block, File),
     )
+    processed_files: MutableSet[int] = set()
 
     search_space_start: int = 0
 
@@ -180,7 +217,8 @@ def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> None:
         if file_fragment.index <= search_space_start:
             break
 
-        # print("Considering file:", file_fragment)
+        if file_fragment.block.id in processed_files:
+            continue
 
         search_space_end: int = file_fragment.index
 
@@ -189,7 +227,7 @@ def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> None:
             direction=Direction.LTR,
             predicate=lambda block: isinstance(block, Space),
             index_start=search_space_start,
-            index_end=search_space_end,
+            index_stop=search_space_end,
         )
 
         space_fragment_index: int
@@ -211,7 +249,9 @@ def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> None:
 
             fragment_size: int = min(space_fragment.size, file_fragment.size)
 
-            disk[space_fragment.index : space_fragment.index + fragment_size] = [file] * fragment_size
+            disk[space_fragment.index : space_fragment.index + fragment_size] = [
+                file_fragment.block
+            ] * fragment_size
             disk[
                 file_fragment.index
                 + file_fragment.size
@@ -221,8 +261,12 @@ def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> None:
 
             file_fragment.size -= fragment_size
 
+        processed_files.add(file_fragment.block.id)
+
+
 def clone_disk(disk: Disk, /) -> MutableDisk:
-    return [block for block in disk]
+    return list(disk)
+
 
 def calculate_filesystem_checksum(disk: Disk, /) -> int:
     checksum: int = 0
@@ -238,43 +282,30 @@ def calculate_filesystem_checksum(disk: Disk, /) -> int:
     return checksum
 
 
-def render_disk(disk: Disk, /) -> str:
-    return "".join(block.render() for block in disk)
+def main() -> None:
+    dataset: str = read_dataset()
+
+    disk_1: MutableDisk = parse_disk_map(dataset)
+    disk_2: MutableDisk = clone_disk(disk_1)
+
+    # --- Part One ---
+
+    compact_disk(disk_1)
+
+    part_1: int = calculate_filesystem_checksum(disk_1)
+
+    print("Part 1:", part_1)
+    assert part_1 == 6435922584968
+
+    # --- Part Two ---
+
+    compact_disk(disk_2, fragment=False)
+
+    checksum_part_2: int = calculate_filesystem_checksum(disk_2)
+
+    print("Part 2:", checksum_part_2)
+    assert checksum_part_2 == 6469636832766
 
 
-def print_disk(disk: Disk, /) -> None:
-    print(render_disk(disk))
-
-
-# dataset: str = "2333133121414131402"
-dataset: str = read_dataset()
-
-disk_1: MutableDisk = parse_disk_map(dataset)
-disk_2: MutableDisk = clone_disk(disk_1)
-
-# --- Part One ---
-
-import time
-# t0 = time.time()
-# compact_disk(disk)
-# print("Took:", time.time() - t0)
-
-# checksum_part_1: int = calculate_filesystem_checksum(disk)
-# assert checksum_part_1 == 6435922584968
-
-# --- Part Two ---
-
-# # print()
-# print_disk(disk_2)
-t0 = time.time()
-compact_disk(disk_2, fragment=False)
-print("Took:", time.time() - t0)
-
-# print_disk(disk_2)
-
-# 6450047797159 is too low
-# 6469604610471 is too low
-checksum_part_2: int = calculate_filesystem_checksum(disk_2)
-# assert checksum_part_2 == ???
-
-print("Part 2:", checksum_part_2)
+if __name__ == "__main__":
+    main()
