@@ -72,6 +72,7 @@ SPACE: Final[Block] = Space()
 
 B = TypeVar("B", bound=Block)
 
+
 @dataclass
 class Fragment(Generic[B]):
     index: int
@@ -177,46 +178,33 @@ def parse_disk_map(disk_map: str, /) -> MutableDisk:
 #         else:
 #             disk.append(Space(space_padding))
 
+
 def iter_fragments(disk: Disk, /) -> Iterable[Fragment[File]]:
     fragment: Optional[Fragment] = None
 
     block_index: int
-    for block_index in range(len(disk)-1, -1, -1):
+    for block_index in range(len(disk) - 1, -1, -1):
         block: Block = disk[block_index]
 
-        # 1. add to existing fragment (yield existing if at end)
-        # 2. start new fragment (yield existing)
-        # 3. no op (yield existing)
-
-        if fragment is not None and fragment.block is block:
-            fragment.index = block_index
-            fragment.size += 1
-            
-            continue
-
-
-        # if fragment is not None and (block_index == 0 or not isinstance(block, File) or fragment.block is not block):
-        #     yield block
-
+        # If there's an existing fragment
+        if fragment is not None:
+            # If this block is a part of the fragment, update
+            # the fragment metadata
+            if fragment.block is block:
+                fragment.index = block_index
+                fragment.size += 1
+            # Otherwise, yield what we have as the fragment is finished
+            else:
+                yield fragment
+                fragment = None
+        
         if not isinstance(block, File):
-            continue
-
-        if fragment is None:
+            fragment = None
+        elif fragment is None:
             fragment = Fragment(index=block_index, block=block, size=1)
 
-        # if fragment is not None:
-        #     if fragment.block is block:
-        #         fragment.index = block_index
-        #         fragment.size += 1
-        #     else:
-        #         yield fragment
-
-        # fragment = Fragment(index=block_index, block=block, size=1)
-
-    # if fragment is not None:
-    #     yield fragment
-
-    return iter([]) # TEMP
+    if fragment is not None:
+        yield fragment
 
 
 def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> None:
@@ -224,7 +212,7 @@ def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> None:
     # search_space_stop: int = 0
 
     block_index: int
-    for block_index in range(len(disk)-1, -1, -1):
+    for block_index in range(len(disk) - 1, -1, -1):
         block: Block = disk[block_index]
 
         if not isinstance(block, File):
@@ -251,6 +239,7 @@ def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> None:
 
         #     space_index: int = block2_index
         #     space: Space = block2
+
 
 # def calculate_filesystem_checksum(disk: Disk, /) -> int:
 #     position: int = 0
@@ -286,13 +275,17 @@ disk: MutableDisk = parse_disk_map(dataset)
 
 print_disk(disk)
 
+for fragment in iter_fragments(disk):
+    print(fragment)
+
 # # --- Part One ---
 
-import time
-t0 = time.time()
-compact_disk(disk)
-print_disk(disk)
-print("Took:", time.time() - t0)
+# import time
+
+# t0 = time.time()
+# compact_disk(disk)
+# print_disk(disk)
+# print("Took:", time.time() - t0)
 
 # # checksum_part_1: int = calculate_filesystem_checksum(disk_1)
 # # assert checksum_part_1 == 6435922584968
