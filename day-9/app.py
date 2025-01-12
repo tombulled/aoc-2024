@@ -177,9 +177,10 @@ def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> None:
     for file_fragment in file_fragments:
         assert isinstance(file_fragment.block, File)
 
-        # file_index: int = file_fragment.index
-        # file_size: int = file_fragment.size
-        file: File = file_fragment.block
+        if file_fragment.index <= search_space_start:
+            break
+
+        # print("Considering file:", file_fragment)
 
         search_space_end: int = file_fragment.index
 
@@ -199,10 +200,6 @@ def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> None:
 
             assert isinstance(space_fragment.block, Space)
 
-            space_index: int = space_fragment.index
-            space_size: int = space_fragment.size
-            space: Space = space_fragment.block
-
             if space_fragment_index == 0:
                 search_space_start = space_fragment.index
 
@@ -214,16 +211,18 @@ def compact_disk(disk: MutableDisk, /, *, fragment: bool = True) -> None:
 
             fragment_size: int = min(space_fragment.size, file_fragment.size)
 
-            disk[space_index : space_index + fragment_size] = [file] * fragment_size
+            disk[space_fragment.index : space_fragment.index + fragment_size] = [file] * fragment_size
             disk[
                 file_fragment.index
                 + file_fragment.size
                 - fragment_size : file_fragment.index
                 + file_fragment.size
-            ] = [space] * fragment_size
+            ] = [space_fragment.block] * fragment_size
 
             file_fragment.size -= fragment_size
 
+def clone_disk(disk: Disk, /) -> MutableDisk:
+    return [block for block in disk]
 
 def calculate_filesystem_checksum(disk: Disk, /) -> int:
     checksum: int = 0
@@ -250,39 +249,32 @@ def print_disk(disk: Disk, /) -> None:
 # dataset: str = "2333133121414131402"
 dataset: str = read_dataset()
 
-disk: MutableDisk = parse_disk_map(dataset)
+disk_1: MutableDisk = parse_disk_map(dataset)
+disk_2: MutableDisk = clone_disk(disk_1)
 
-# print_disk(disk)
-
-# print()
-# for fragment in iter_fragments(disk, direction=Direction.RTL):
-#     print(fragment.render(), fragment)
-# print()
-
-# # --- Part One ---
+# --- Part One ---
 
 import time
+# t0 = time.time()
+# compact_disk(disk)
+# print("Took:", time.time() - t0)
 
-t0 = time.time()
-compact_disk(disk)
-# print_disk(disk)
-print("Took:", time.time() - t0)
+# checksum_part_1: int = calculate_filesystem_checksum(disk)
+# assert checksum_part_1 == 6435922584968
 
-checksum_part_1: int = calculate_filesystem_checksum(disk)
-assert checksum_part_1 == 6435922584968
-
-# # --- Part Two ---
+# --- Part Two ---
 
 # # print()
 # print_disk(disk_2)
-# t0 = time.time()
-# compact_disk(disk_2, fragment=False)
-# print("Took:", time.time() - t0)
+t0 = time.time()
+compact_disk(disk_2, fragment=False)
+print("Took:", time.time() - t0)
 
 # print_disk(disk_2)
 
-# # 6450047797159 is too low
-# checksum_part_2: int = calculate_filesystem_checksum(disk_2)
-# # assert checksum_part_2 == ???
+# 6450047797159 is too low
+# 6469604610471 is too low
+checksum_part_2: int = calculate_filesystem_checksum(disk_2)
+# assert checksum_part_2 == ???
 
-# print("Part 2:", checksum_part_2)
+print("Part 2:", checksum_part_2)
