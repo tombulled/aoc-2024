@@ -2,7 +2,7 @@
 
 from abc import abstractmethod
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, IntEnum, auto
 from functools import cached_property
 from typing import (
     ClassVar,
@@ -25,14 +25,15 @@ from typing import (
 T = TypeVar("T")
 Coord: TypeAlias = Tuple[int, int]
 
+
 class Coordinate(NamedTuple):
     x: int
     y: int
 
 
 ### Exceptions ###
-class MapError(Exception):
-    pass
+# class MapError(Exception):
+#     pass
 
 
 class SpriteError(Exception):
@@ -40,20 +41,63 @@ class SpriteError(Exception):
 
 
 ### Enums ###
-class NoValueEnum(Enum):
-    def __repr__(self) -> str:
-        return f"<{type(self).__name__}.{self.name}>"
+# class NoValueEnum(Enum):
+#     def __repr__(self) -> str:
+#         return f"<{type(self).__name__}.{self.name}>"
 
 
-# TODO: Can matrices be used for turning?
-# e.g. UP = (0, 1), DOWN = (0, -1), LEFT = (-1, 0), RIGHT = (1, 0)
-# then `Direction` can own the method/logic for turning, e.g:
-# assert Direction.UP.left() is Direction.LEFT
-class Direction(Enum):
-    UP: Coord = Coordinate(0, 1)
-    DOWN: Coord = Coordinate(0, -1)
-    LEFT: Coord = Coordinate(-1, 0)
-    RIGHT: Coord = Coordinate(1, 0)
+class _CyclicalEnum(Enum):
+    """Enum with sequential, cyclical members"""
+
+    @classmethod
+    def first(cls: Type[Self], /) -> Self:
+        """Get the first member of this enum"""
+
+        return next(iter(cls))
+
+    @classmethod
+    def last(cls: Type[Self], /) -> Self:
+        """Get the last member of this enum"""
+
+        return next(reversed(cls))
+
+    @property
+    def _index(self: Self, /) -> int:
+        cls: Type[Self] = type(self)
+        members: Sequence[Self] = tuple(cls)
+
+        return members.index(self)
+
+    @classmethod
+    def _members(cls: Type[Self], /) -> Sequence[Self]:
+        return tuple(cls)
+
+    def prev(self: Self, /) -> Self:
+        """Get the previous member of this enum"""
+
+        index: int = (self._index - 1) % len(self._members())
+
+        return self._members()[index]
+
+    def next(self: Self, /) -> Self:
+        """Get the next member of this enum"""
+
+        index: int = (self._index + 1) % len(self._members())
+
+        return self._members()[index]
+
+
+class Direction(_CyclicalEnum):
+    UP: Coordinate = Coordinate(0, 1)
+    LEFT: Coordinate = Coordinate(-1, 0)
+    DOWN: Coordinate = Coordinate(0, -1)
+    RIGHT: Coordinate = Coordinate(1, 0)
+
+    def left(self: Self, /) -> Self:
+        return self.next()
+
+    def right(self: Self, /) -> Self:
+        return self.prev()
 
 
 ### Constants ###
@@ -111,7 +155,7 @@ class Empty(StaticSprite):
     COSTUME = "."
 
 
-class Obstacle(StaticSprite):
+class Obstruction(StaticSprite):
     COSTUME = "#"
 
 
@@ -311,7 +355,7 @@ class Map:
 
 # Sprites
 EMPTY: Final[Empty] = Empty()
-OBSTACLE: Final[Obstacle] = Obstacle()
+OBSTACLE: Final[Obstruction] = Obstruction()
 TRAIL: Final[Trail] = Trail()
 
 EXAMPLE: Final[str] = (
